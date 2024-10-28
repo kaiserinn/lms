@@ -3,7 +3,10 @@
     "module": "index.ts",
     "type": "module",
     "scripts": {
-        "dev": "bun run --hot src/index.ts"
+        "dev": "bun run --hot src/index.ts",
+        "db:seed": "bun run ./src/lib/utils/cli.ts seed",
+        "db:drop": "bun run ./src/lib/utils/cli.ts drop", 
+        "db:reset": "bun run ./src/lib/utils/cli.ts all"
     },
     "devDependencies": {
         "@biomejs/biome": "1.9.4",

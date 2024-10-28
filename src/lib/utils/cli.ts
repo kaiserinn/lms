@@ -1,13 +1,11 @@
-// Dev only utility
-
 import mysql from "mysql2/promise";
 
 export const pool = mysql.createPool({
-    host: "localhost",
-    port: 3306,
-    user: "monty",
-    password: "some_pass",
-    database: "lms",
+    host: Bun.env.DB_HOST,
+    port: Number(Bun.env.DB_PORT),
+    user: Bun.env.DB_CLI_USER,
+    password: Bun.env.DB_CLI_PASSWORD,
+    database: Bun.env.DB_NAME,
     multipleStatements: true,
 });
 
