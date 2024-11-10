@@ -1,0 +1,19 @@
+{
+  "name": "learning-management-system",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.0.1",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.9",
+    "mysql2": "^3.11.0"
+  }
+}
