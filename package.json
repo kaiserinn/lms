@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun run src/index.ts"
+    "dev": "bun run --hot src/index.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.1",

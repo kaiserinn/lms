@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { conn } from "@/db";
 
 async function executeFile(filePath: string) {
     const file = Bun.file(filePath);
@@ -7,7 +7,7 @@ async function executeFile(filePath: string) {
     for (const statement of statements) {
         const trimmed = statement.trim();
         if (trimmed && trimmed !== "DELIMITER") {
-            await db.query(trimmed);
+            await conn.query(trimmed);
         }
     }
 }
@@ -28,4 +28,4 @@ try {
     console.error("Error executing files:\n", error);
 }
 
-db.end();
+conn.end();
