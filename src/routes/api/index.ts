@@ -1,7 +1,10 @@
 import { Hono } from "hono";
+import { authRouter } from "./auth";
+import { call } from "@/db";
+
 const router = new Hono();
 
-router.get("/", (c) => c.text("Hello, World!"));
+router.route("/auth", authRouter);
 
 export { router as apiRouter };
 

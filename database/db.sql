@@ -17,6 +17,14 @@ CREATE TABLE account (
     updated_at timestamp DEFAULT NOW()
 )$$
 
+DROP TABLE IF EXISTS session$$
+CREATE TABLE session (
+    id VARCHAR(255) NOT NULL PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    expires_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES account(id)
+)$$
+
 DROP TABLE IF EXISTS course$$
 CREATE TABLE course (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -1217,6 +1225,143 @@ BEGIN
     COMMIT;
 END$$
 
+CREATE OR REPLACE PROCEDURE get_session(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT s.id, s.user_id, s.expires_at, a.id
+    FROM session s
+    INNER JOIN account a ON s.user_id = a.id
+    WHERE s.id = p_session_id;
+
+    COMMIT;
+END $$
+
+CREATE OR REPLACE PROCEDURE delete_session(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    DELETE FROM session
+    WHERE id = p_session_id;
+
+    COMMIT;
+END $$
+
+CREATE OR REPLACE PROCEDURE update_session(
+    p_session_id VARCHAR(255),
+    p_expires_at DATETIME
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    UPDATE session
+    SET expires_at = p_expires_at
+    WHERE id = p_session_id;
+
+    COMMIT;
+END $$
+
+CREATE OR REPLACE PROCEDURE validate_session(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE curr_time DATETIME DEFAULT NOW();
+    DECLARE expires_at DATETIME;
+    DECLARE session_id VARCHAR(255);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT id, expires_at
+    INTO session_id, expires_at
+    FROM session
+    WHERE id = p_session_id;
+
+    IF session_id IS NULL OR curr_time >= expires_at THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Not authorized';
+    END IF;
+
+    IF curr_time >= expires_at - INTERVAL 12 HOUR THEN
+        SET expires_at = curr_time + INTERVAL 1 DAY;
+        UPDATE session SET expires_at = expires_at WHERE id = session_id;
+    END IF;
+
+    SELECT id, user_id, expires_at
+    FROM session
+    WHERE id = session_id;
+    
+    COMMIT;
+END $$
+
+CREATE OR REPLACE PROCEDURE create_session(
+    p_user_id INT UNSIGNED
+)
+BEGIN
+    DECLARE uuid VARCHAR(255) DEFAULT UUID();
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    INSERT INTO session (id, user_id, expires_at)
+    VALUES
+        (uuid, p_user_id, NOW() + INTERVAL 1 DAY);
+
+    SELECT id, user_id, expires_at
+    FROM session
+    WHERE id = uuid;
+
+    COMMIT;
+END $$
+
+CREATE OR REPLACE PROCEDURE logout (
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    CALL validate_session(p_session_id);
+    DELETE FROM session WHERE id = p_session_id;
+
+    COMMIT;
+END $$
+
 CREATE OR REPLACE PROCEDURE login (
     p_email VARCHAR(255),
     p_password VARCHAR(255)
@@ -1239,7 +1384,7 @@ BEGIN
         SET MESSAGE_TEXT = 'Email or password is incorrect';
     END IF;
 
-    SELECT *
+    SELECT id, username, email, first_name, last_name, role
     FROM account
     WHERE email = p_email AND password = PASSWORD(p_password);
 
@@ -1272,4 +1417,3 @@ BEGIN
 
     COMMIT;
 END$$
-
