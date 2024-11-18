@@ -4,7 +4,7 @@ export type User = {
     first_name: string;
     email: string;
     password: string;
-    last_name: string
+    last_name: string;
     role: "ADMIN" | "STUDENT" | "INSTRUCTOR";
 };
 

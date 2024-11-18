@@ -1,3 +1,5 @@
+// Dev only utility
+
 import mysql from "mysql2/promise";
 
 export const pool = mysql.createPool({
@@ -6,7 +8,7 @@ export const pool = mysql.createPool({
     user: "monty",
     password: "some_pass",
     database: "lms",
-    multipleStatements: true
+    multipleStatements: true,
 });
 
 async function executeFile(filePath: string) {

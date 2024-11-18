@@ -12,7 +12,7 @@ router.post("/", async (c) => {
         body.password,
         body.firstName,
         body.lastName,
-        body.role
+        body.role,
     );
 
     return c.json({

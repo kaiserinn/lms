@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { loginRouter } from "./login";
-import { registerRouter } from "./register";
 import { logoutRouter } from "./logout";
+import { registerRouter } from "./register";
 
 const router = new Hono();
 

@@ -1,6 +1,6 @@
-import { Hono } from "hono";
 import { db } from "@/db";
 import type { Session, User } from "@/lib/types";
+import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 
 const router = new Hono();
@@ -11,12 +11,12 @@ router.post("/", async (c) => {
         password: string;
     }>();
 
-    const [[[ user ]]] = await db.login<User>(email, password);
-    const [[[ session ]]] = await db.create_session<Session>(user.id);
+    const [[[user]]] = await db.login<User>(email, password);
+    const [[[session]]] = await db.create_session<Session>(user.id);
 
     setCookie(c, "auth_session", session.id, {
         httpOnly: true,
-        expires: session.expires_at
+        expires: session.expires_at,
     });
 
     return c.json({
@@ -26,8 +26,8 @@ router.post("/", async (c) => {
             username: user.username,
             email: user.email,
             firstName: user.first_name,
-            lastName: user.last_name
-        }
+            lastName: user.last_name,
+        },
     });
 });
 
