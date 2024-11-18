@@ -1,15 +1,15 @@
 import mysql, { type ProcedureCallPacket, type RowDataPacket } from "mysql2/promise";
 
-export const conn = await mysql.createConnection({
+export const pool = mysql.createPool({
     host: Bun.env.DB_HOST || "localhost",
     port: Number(Bun.env.DB_PORT || "3306"),
-    user: Bun.env.DB_USER || "monty",
-    password: Bun.env.DB_PASSWORD || "some_pass",
+    user: Bun.env.DB_USER || "lms_user",
+    password: Bun.env.DB_PASSWORD || "lms3123",
     database: Bun.env.DB_NAME || "lms",
 });
 
 export async function call<TData>(name: string, ...params: unknown[]) {
-    return conn.query<ProcedureCallPacket<(TData & RowDataPacket)[]>>(
+    return pool.query<ProcedureCallPacket<(TData & RowDataPacket)[]>>(
         `CALL ${name}(${params.map(_ => "?").join(", ")})`,
         params
     );

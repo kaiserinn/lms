@@ -1,10 +1,8 @@
-DELIMITER $$
+DROP DATABASE IF EXISTS lms;
+CREATE DATABASE lms;
+USE lms;
 
-DROP DATABASE IF EXISTS lms$$
-CREATE DATABASE lms$$
-USE lms$$
-
-DROP TABLE IF EXISTS account$$
+DROP TABLE IF EXISTS account;
 CREATE TABLE account (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -15,26 +13,26 @@ CREATE TABLE account (
     role ENUM('ADMIN', 'INSTRUCTOR', 'STUDENT') NOT NULL,
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW()
-)$$
+);
 
-DROP TABLE IF EXISTS session$$
+DROP TABLE IF EXISTS session;
 CREATE TABLE session (
     id VARCHAR(255) NOT NULL PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
     expires_at DATETIME NOT NULL,
     FOREIGN KEY (user_id) REFERENCES account(id)
-)$$
+);
 
-DROP TABLE IF EXISTS course$$
+DROP TABLE IF EXISTS course;
 CREATE TABLE course (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW()
-)$$
+);
 
-DROP TABLE IF EXISTS enrollment$$
+DROP TABLE IF EXISTS enrollment;
 CREATE TABLE enrollment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     student_id INT UNSIGNED NOT NULL,
@@ -44,9 +42,9 @@ CREATE TABLE enrollment (
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(student_id) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS course_instructor$$
+DROP TABLE IF EXISTS course_instructor;
 CREATE TABLE course_instructor (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     instructor_id INT UNSIGNED NOT NULL,
@@ -55,9 +53,9 @@ CREATE TABLE course_instructor (
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(instructor_id) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS course_prerequisite$$
+DROP TABLE IF EXISTS course_prerequisite;
 CREATE TABLE course_prerequisite (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     course_id INT UNSIGNED NOT NULL,
@@ -66,9 +64,9 @@ CREATE TABLE course_prerequisite (
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
     FOREIGN KEY(prerequisite_id) REFERENCES course(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS course_specification$$
+DROP TABLE IF EXISTS course_specification;
 CREATE TABLE course_specification (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     course_id INT UNSIGNED NOT NULL,
@@ -77,9 +75,9 @@ CREATE TABLE course_specification (
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS attachment$$
+DROP TABLE IF EXISTS attachment;
 CREATE TABLE attachment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255),
@@ -88,9 +86,9 @@ CREATE TABLE attachment (
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(owner) REFERENCES account(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS assignment$$
+DROP TABLE IF EXISTS assignment;
 CREATE TABLE assignment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     type ENUM('QUIZ', 'MID_TERM', 'FINAL') NOT NULL,
@@ -101,9 +99,9 @@ CREATE TABLE assignment (
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
-)$$
+);
 
-DROP TABLE IF EXISTS post$$
+DROP TABLE IF EXISTS post;
 CREATE TABLE post (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
@@ -118,9 +116,9 @@ CREATE TABLE post (
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
     FOREIGN KEY(posted_by) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(assignment_id) REFERENCES assignment(id) ON DELETE SET NULL
-)$$
+);
 
-DROP TABLE IF EXISTS grade$$
+DROP TABLE IF EXISTS grade;
 CREATE TABLE grade (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     grade CHAR(2) NOT NULL,
@@ -129,9 +127,9 @@ CREATE TABLE grade (
     created_at timestamp DEFAULT NOW(),
     updated_at timestamp DEFAULT NOW(),
     CHECK (min_score >= 0 AND max_score <= 100 AND min_score <= max_score)
-)$$
+);
 
-DROP TABLE IF EXISTS submission$$
+DROP TABLE IF EXISTS submission;
 CREATE TABLE submission (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     status ENUM('GRADED', 'NOT GRADED'),
@@ -147,17 +145,17 @@ CREATE TABLE submission (
     FOREIGN KEY(submitted_by) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(assignment_id) REFERENCES assignment(id),
     FOREIGN KEY(grade_id) REFERENCES grade(id) ON DELETE CASCADE
-)$$
+);
 
 CREATE OR REPLACE VIEW enrollment_view AS
     SELECT c.id, c.name, e.status, e.student_id
     FROM enrollment e
-    INNER JOIN course c ON e.course_id = c.id$$
+    INNER JOIN course c ON e.course_id = c.id;
 
 CREATE OR REPLACE VIEW instructor_course_view AS
     SELECT c.id, c.name, ci.instructor_id
     FROM course_instructor ci
-    INNER JOIN course c ON ci.course_id = c.id$$
+    INNER JOIN course c ON ci.course_id = c.id;
 
 CREATE TRIGGER update_enrollment_on_completion
 AFTER UPDATE ON submission
@@ -172,7 +170,7 @@ BEGIN
                      SELECT course_id FROM assignment WHERE id = NEW.assignment_id
               );
        END IF;
-END$$
+END;
 
 CREATE TRIGGER prevent_duplicate_enrollment
     BEFORE INSERT ON enrollment
@@ -188,7 +186,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'You are already enrolled in this course.';
     END IF;
-END$$
+END;
 
 CREATE OR REPLACE TRIGGER cascade_delete_assignment
     BEFORE DELETE ON assignment
@@ -196,7 +194,7 @@ CREATE OR REPLACE TRIGGER cascade_delete_assignment
 BEGIN
     DELETE FROM submission
     WHERE assignment_id = OLD.id;
-END$$
+END;
 
 CREATE OR REPLACE FUNCTION avg_score(student_id INT UNSIGNED, course_id INT UNSIGNED)
 RETURNS DECIMAL(5, 2)
@@ -224,7 +222,7 @@ BEGIN
        WHERE s.submitted_by = student_id AND a.course_id = course_id AND a.type = "FINAL";
 
        RETURN quiz + mid_term + final;
-END$$
+END;
 
 CREATE OR REPLACE FUNCTION course_completion(student_id INT UNSIGNED, course_id INT UNSIGNED)
 RETURNS DECIMAL(5, 2)
@@ -240,7 +238,7 @@ BEGIN
     WHERE submitted_by = student_id AND a.course_id = course_id;
 
     RETURN (submitted_assignments / total_assignments) * 100;
-END$$
+END;
 
 CREATE FUNCTION get_grade(score INT)
 RETURNS VARCHAR(2)
@@ -268,7 +266,7 @@ BEGIN
     END IF;
 
     RETURN grade;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_accounts ()
 BEGIN
@@ -285,7 +283,7 @@ BEGIN
     FROM account;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_students ()
 BEGIN
@@ -303,7 +301,7 @@ BEGIN
     WHERE role = 'STUDENT';
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_instructors ()
 BEGIN
@@ -321,7 +319,7 @@ BEGIN
     WHERE role = 'INSTRUCTOR';
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_courses ()
 BEGIN
@@ -338,7 +336,7 @@ BEGIN
     FROM course;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_student_courses (
     p_student_id INT UNSIGNED
@@ -366,7 +364,7 @@ BEGIN
     WHERE student_id = p_student_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_instructor_courses (
     p_instructor_id INT UNSIGNED
@@ -395,7 +393,7 @@ BEGIN
     WHERE instructor_id = p_instructor_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_assignments ()
 BEGIN
@@ -412,7 +410,7 @@ BEGIN
     FROM assignment;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_course_assignment (
     p_course_id INT UNSIGNED
@@ -433,7 +431,7 @@ BEGIN
     WHERE c.id = p_course_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_posts ()
 BEGIN
@@ -450,7 +448,7 @@ BEGIN
     FROM post;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_course_posts (
     p_course_id INT UNSIGNED
@@ -471,7 +469,7 @@ BEGIN
     WHERE c.id = p_course_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_attachments ()
 BEGIN
@@ -488,7 +486,7 @@ BEGIN
     FROM attachment;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_reports (student_id INT, course_id INT)
 BEGIN
@@ -511,7 +509,7 @@ BEGIN
     SELECT avg_score(student_id, course_id);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_transcript_with_score_by_id(student_id INT)
 BEGIN
@@ -541,7 +539,7 @@ BEGIN
     WHERE ac.id = student_id AND e.status = 'COMPLETED';
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE show_transcript_by_id(student_id INT UNSIGNED)
 BEGIN
@@ -576,7 +574,7 @@ BEGIN
     WHERE ac.id = student_id AND e.status = 'COMPLETED';
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE enroll_student_to_course(
     student_id INT UNSIGNED,
@@ -638,7 +636,7 @@ BEGIN
     VALUES (student_id, course_id, 'ACTIVE');
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE drop_course(
     p_student_id INT UNSIGNED,
@@ -671,7 +669,7 @@ BEGIN
         AND status = 'ACTIVE';
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE submit_assignment (
     IN p_student_id INT UNSIGNED,
@@ -702,7 +700,7 @@ BEGIN
         ('NOT GRADED', p_student_id, p_assignment_id, p_attachment_id);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE grade_submission(
     p_instructor_id INT UNSIGNED,
@@ -749,7 +747,7 @@ BEGIN
     WHERE id = p_submission_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE assign_instructor_to_course(
     p_assigner_id INT UNSIGNED,
@@ -789,7 +787,7 @@ BEGIN
     VALUES (p_instructor_id, p_course_id);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE create_assignment(
     p_creator_id INT UNSIGNED,
@@ -838,7 +836,7 @@ BEGIN
     VALUES (p_type, p_title, p_detail, p_due_date, p_course_id);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE edit_assignment(
     p_creator_id INT UNSIGNED,
@@ -893,7 +891,7 @@ BEGIN
     WHERE id = p_assignment_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE drop_assignment (
     p_account_id INT UNSIGNED,
@@ -935,7 +933,7 @@ BEGIN
     WHERE id = p_assignment_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE create_post(
     p_creator_id INT UNSIGNED,
@@ -984,7 +982,7 @@ BEGIN
     VALUES (p_title, p_content, attachment_id, p_course_id, p_creator_id, p_assignment_id);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE edit_post(
     p_creator_id INT UNSIGNED,
@@ -1031,7 +1029,7 @@ BEGIN
     WHERE id = p_post_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE drop_assignment(
     p_account_id INT UNSIGNED,
@@ -1073,7 +1071,7 @@ BEGIN
     WHERE id = p_post_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE create_course(
     p_account_id INT UNSIGNED,
@@ -1103,7 +1101,7 @@ BEGIN
     VALUES (p_course_name, p_course_description);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE edit_course (
     p_account_id INT UNSIGNED,
@@ -1136,7 +1134,7 @@ BEGIN
     WHERE id = p_course_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE delete_course (
     p_account_id INT UNSIGNED,
@@ -1172,7 +1170,7 @@ BEGIN
     WHERE id = p_course_id;
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE register (
     p_username VARCHAR(255),
@@ -1191,6 +1189,11 @@ BEGIN
 
     START TRANSACTION;
 
+    IF (p_role = 'ADMIN') THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Not authorized.';
+    END IF;
+
     IF LENGTH(p_username) < 3 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Username must at least be 3 characters long.';
@@ -1204,7 +1207,7 @@ BEGIN
     IF EXISTS (
         SELECT id
         FROM account
-        WHERE username = p_username
+        WHERE username = p_username OR email = p_email
     ) THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Username is taken.';
@@ -1223,7 +1226,7 @@ BEGIN
     VALUES (p_username, p_email, PASSWORD(p_password), p_fname, p_lname, p_role);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE get_session(
     p_session_id VARCHAR(255)
@@ -1243,7 +1246,7 @@ BEGIN
     WHERE s.id = p_session_id;
 
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE delete_session(
     p_session_id VARCHAR(255)
@@ -1261,7 +1264,7 @@ BEGIN
     WHERE id = p_session_id;
 
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE update_session(
     p_session_id VARCHAR(255),
@@ -1281,7 +1284,7 @@ BEGIN
     WHERE id = p_session_id;
 
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE validate_session(
     p_session_id VARCHAR(255)
@@ -1316,9 +1319,9 @@ BEGIN
     SELECT id, user_id, expires_at
     FROM session
     WHERE id = session_id;
-    
+
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE create_session(
     p_user_id INT UNSIGNED
@@ -1342,7 +1345,7 @@ BEGIN
     WHERE id = uuid;
 
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE logout (
     p_session_id VARCHAR(255)
@@ -1360,7 +1363,7 @@ BEGIN
     DELETE FROM session WHERE id = p_session_id;
 
     COMMIT;
-END $$
+END ;
 
 CREATE OR REPLACE PROCEDURE login (
     p_email VARCHAR(255),
@@ -1389,7 +1392,7 @@ BEGIN
     WHERE email = p_email AND password = PASSWORD(p_password);
 
     COMMIT;
-END$$
+END;
 
 CREATE OR REPLACE PROCEDURE global_search (
     search_string VARCHAR(255)
@@ -1416,4 +1419,4 @@ BEGIN
     WHERE title LIKE CONCAT('%', search_string, '%');
 
     COMMIT;
-END$$
+END;

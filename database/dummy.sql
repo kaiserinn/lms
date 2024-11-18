@@ -1,5 +1,3 @@
-DELIMITER $$
-
 INSERT INTO account (username, email, password, first_name, last_name, role) VALUES
 ('student1', 'student1@example.com', 'password123', 'John', 'Doe', 'STUDENT'),
 ('student2', 'student2@example.com', 'password123', 'Jane', 'Smith', 'STUDENT'),
@@ -10,7 +8,7 @@ INSERT INTO account (username, email, password, first_name, last_name, role) VAL
 ('instructor2', 'instructor2@example.com', 'password123', 'Samuel', 'Jackson', 'INSTRUCTOR'),
 ('instructor3', 'instructor3@example.com', 'password123', 'Mark', 'Ruffalo', 'INSTRUCTOR'),
 ('admin1', 'admin1@example.com', 'password123', 'Tony', 'Stark', 'ADMIN'),
-('admin2', 'admin2@example.com', 'password123', 'Steve', 'Rogers', 'ADMIN')$$
+('admin2', 'admin2@example.com', 'password123', 'Steve', 'Rogers', 'ADMIN');
 
 INSERT INTO course (name) VALUES
     ('Desain Web'),
@@ -22,7 +20,7 @@ INSERT INTO course (name) VALUES
     ('Fisika Dasar'),
     ('Kimia Dasar'),
     ('Arsitektur Komputer'),
-    ('Aljabar Linier')$$
+    ('Aljabar Linier');
 
 INSERT INTO course_prerequisite (course_id, prerequisite_id) VALUES
     (4, 2),
@@ -34,7 +32,7 @@ INSERT INTO course_prerequisite (course_id, prerequisite_id) VALUES
     (8, 7),
     (9, 1),
     (9, 3),
-    (10, 5)$$
+    (10, 5);
 
 INSERT INTO enrollment (student_id, course_id, status) VALUES
     (1, 1, 'ACTIVE'),
@@ -61,7 +59,7 @@ INSERT INTO enrollment (student_id, course_id, status) VALUES
     (5, 9, 'ACTIVE'),
     (5, 10, 'DROPPED'),
     (5, 1, 'ACTIVE'),
-    (5, 2, 'COMPLETED')$$
+    (5, 2, 'COMPLETED');
 
 INSERT INTO course_instructor (instructor_id, course_id)
 VALUES
@@ -69,7 +67,7 @@ VALUES
     (1, 2),
     (1, 3),
     (1, 4),
-    (1, 5)$$
+    (1, 5);
 
 INSERT INTO course_specification (course_id, type, weight) VALUES
     (1, 'QUIZ', 20), (1, 'MID_TERM', 40), (1, 'FINAL', 40),
@@ -81,7 +79,7 @@ INSERT INTO course_specification (course_id, type, weight) VALUES
     (7, 'QUIZ', 20), (7, 'MID_TERM', 40), (7, 'FINAL', 40),
     (8, 'QUIZ', 20), (8, 'MID_TERM', 40), (8, 'FINAL', 40),
     (9, 'QUIZ', 20), (9, 'MID_TERM', 40), (9, 'FINAL', 40),
-    (10, 'QUIZ', 20), (10, 'MID_TERM', 40), (10, 'FINAL', 40)$$
+    (10, 'QUIZ', 20), (10, 'MID_TERM', 40), (10, 'FINAL', 40);
 
 INSERT INTO assignment (type, due_date, course_id, title) VALUES
     ('QUIZ', '2024-10-30 23:59:59', 1, 'Desain Web Quiz 1'),
@@ -122,7 +120,7 @@ INSERT INTO assignment (type, due_date, course_id, title) VALUES
 
     ('QUIZ', '2024-11-08 23:59:59', 10, 'Aljabar Linier Quiz 1'),
     ('MID_TERM', '2024-11-24 23:59:59', 10, 'Aljabar Linier Mid-Term Exam'),
-    ('FINAL', '2024-12-24 23:59:59', 10, 'Aljabar Linier Final Exam')$$
+    ('FINAL', '2024-12-24 23:59:59', 10, 'Aljabar Linier Final Exam');
 
 INSERT INTO grade (grade, min_score, max_score) VALUES
     ('A', 86, 100),
@@ -131,7 +129,7 @@ INSERT INTO grade (grade, min_score, max_score) VALUES
     ('BC', 56, 65),
     ('C', 51, 55),
     ('D', 41, 50),
-    ('E', 0, 40)$$
+    ('E', 0, 40);
 
 INSERT INTO submission (status, score, submitted_by, assignment_id)
 VALUES
@@ -140,5 +138,5 @@ VALUES
     ('GRADED', 60, 1, 6),
     ('GRADED', 70, 1, 13),
     ('GRADED', 90, 1, 14),
-    ('GRADED', 90, 1, 15)$$
+    ('GRADED', 90, 1, 15);
 

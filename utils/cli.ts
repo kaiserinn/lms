@@ -1,15 +1,17 @@
-import { conn } from "@/db";
+import mysql from "mysql2/promise";
+
+export const pool = mysql.createPool({
+    host: "localhost",
+    port: 3306,
+    user: "monty",
+    password: "some_pass",
+    database: "lms",
+    multipleStatements: true
+});
 
 async function executeFile(filePath: string) {
     const file = Bun.file(filePath);
-    const statements = (await file.text()).split("$$");
-
-    for (const statement of statements) {
-        const trimmed = statement.trim();
-        if (trimmed && trimmed !== "DELIMITER") {
-            await conn.query(trimmed);
-        }
-    }
+    await pool.query(await file.text());
 }
 
 const action = Bun.argv[2];
@@ -28,4 +30,4 @@ try {
     console.error("Error executing files:\n", error);
 }
 
-conn.end();
+pool.end();
