@@ -1189,19 +1189,29 @@ BEGIN
 
     START TRANSACTION;
 
-    IF (p_role = 'ADMIN') THEN
+    IF p_email IS NULL THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Not authorized.';
-    END IF;
+        SET MESSAGE_TEXT = 'Email cannot be empty.';
+    end if;
 
-    IF LENGTH(p_username) < 3 THEN
+    IF LENGTH(p_username) < 3 OR p_username IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Username must at least be 3 characters long.';
     END IF;
 
-    IF LENGTH(p_password) < 8 THEN
+    IF LENGTH(p_password) < 8 OR p_password IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Password must at least be 8 characters long.';
+    END IF;
+
+    IF p_role IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Role cannot be empty.';
+    END IF;
+
+    IF p_role = 'ADMIN' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Not authorized.';
     END IF;
 
     IF EXISTS (
@@ -1347,7 +1357,7 @@ BEGIN
     COMMIT;
 END ;
 
-CREATE OR REPLACE PROCEDURE logout (
+CREATE OR REPLACE PROCEDURE logout(
     p_session_id VARCHAR(255)
 )
 BEGIN
@@ -1359,7 +1369,6 @@ BEGIN
 
     START TRANSACTION;
 
-    CALL validate_session(p_session_id);
     DELETE FROM session WHERE id = p_session_id;
 
     COMMIT;
@@ -1377,6 +1386,16 @@ BEGIN
         END;
 
     START TRANSACTION;
+
+    IF p_email IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Email cannot be empty.';
+    END IF;
+
+    IF p_password IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Password cannot be empty.';
+    END IF;
 
     IF NOT EXISTS (
         SELECT id

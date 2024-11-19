@@ -6,11 +6,11 @@ const router = new Hono();
 
 router.delete("/", async (c) => {
     const token = getCookie(c, "auth_session");
-
     await db.logout(token);
+
     deleteCookie(c, "auth_session");
 
-    return c.json({ message: "Logout berhasil" });
+    return c.json({ message: "Logout successful" });
 });
 
 export { router as logoutRouter };

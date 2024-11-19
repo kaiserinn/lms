@@ -16,7 +16,7 @@ router.post("/", async (c) => {
     );
 
     return c.json({
-        message: "Register berhasil",
+        message: "Register successful",
     });
 });
 
