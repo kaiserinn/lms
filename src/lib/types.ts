@@ -1,4 +1,8 @@
-export type User = {
+export type Branded<TType extends string> = {
+    __branded: TType
+};
+
+export type User = Branded<'user'> & {
     id: number;
     username: string;
     first_name: string;
@@ -8,7 +12,7 @@ export type User = {
     role: "ADMIN" | "STUDENT" | "INSTRUCTOR";
 };
 
-export type Session = {
+export type Session = Branded<'session'> & {
     id: string;
     user_id: number;
     expires_at: Date;

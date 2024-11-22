@@ -6,13 +6,11 @@ import { setCookie } from "hono/cookie";
 const router = new Hono();
 
 router.post("/", async (c) => {
-    const { email, password } = await c.req.json<{
-        email: string;
-        password: string;
-    }>();
+    const { email, password } =
+        await c.req.json<Pick<User, "email" | "password">>();
 
-    const [[[user]]] = await db.login<User>(email, password);
-    const [[[session]]] = await db.create_session<Session>(user.id);
+    const user = (await db.login<User>(email, password)).data[0];
+    const session = (await db.create_session<Session>(user.id)).data[0];
 
     setCookie(c, "auth_session", session.id, {
         httpOnly: true,
@@ -20,7 +18,7 @@ router.post("/", async (c) => {
     });
 
     return c.json({
-        message: "Login berhasil",
+        message: "Login successful",
         data: {
             id: user.id,
             username: user.username,
