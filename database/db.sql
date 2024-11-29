@@ -2,8 +2,7 @@ DROP DATABASE IF EXISTS lms;
 CREATE DATABASE lms;
 USE lms;
 
-DROP TABLE IF EXISTS account;
-CREATE TABLE account (
+CREATE OR REPLACE TABLE account (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -11,98 +10,89 @@ CREATE TABLE account (
     first_name VARCHAR(255),
     last_name VARCHAR(255),
     role ENUM('ADMIN', 'INSTRUCTOR', 'STUDENT') NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW()
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW()
 );
 
-DROP TABLE IF EXISTS session;
-CREATE TABLE session (
+CREATE OR REPLACE TABLE session (
     id VARCHAR(255) NOT NULL PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
     expires_at DATETIME NOT NULL,
     FOREIGN KEY (user_id) REFERENCES account(id)
 );
 
-DROP TABLE IF EXISTS course;
-CREATE TABLE course (
+CREATE OR REPLACE TABLE course (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW()
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW()
 );
 
-DROP TABLE IF EXISTS enrollment;
-CREATE TABLE enrollment (
+CREATE OR REPLACE TABLE enrollment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     student_id INT UNSIGNED NOT NULL,
     course_id INT UNSIGNED NOT NULL,
     status ENUM('ACTIVE', 'COMPLETED', 'DROPPED'),
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(student_id) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS course_instructor;
-CREATE TABLE course_instructor (
+CREATE OR REPLACE TABLE course_instructor (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     instructor_id INT UNSIGNED NOT NULL,
     course_id INT UNSIGNED NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(instructor_id) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS course_prerequisite;
-CREATE TABLE course_prerequisite (
+CREATE OR REPLACE TABLE course_prerequisite (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     course_id INT UNSIGNED NOT NULL,
     prerequisite_id INT UNSIGNED NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
     FOREIGN KEY(prerequisite_id) REFERENCES course(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS course_specification;
-CREATE TABLE course_specification (
+CREATE OR REPLACE TABLE course_specification (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     course_id INT UNSIGNED NOT NULL,
     type ENUM('QUIZ', 'MID_TERM', 'FINAL') NOT NULL,
     weight TINYINT UNSIGNED NOT NULL CHECK (weight BETWEEN 0 AND 100),
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS attachment;
-CREATE TABLE attachment (
+CREATE OR REPLACE TABLE attachment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255),
     file_path VARCHAR(255) NOT NULL,
     owner INT UNSIGNED NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(owner) REFERENCES account(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS assignment;
-CREATE TABLE assignment (
+CREATE OR REPLACE TABLE assignment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     type ENUM('QUIZ', 'MID_TERM', 'FINAL') NOT NULL,
     title VARCHAR(255),
     detail TEXT,
     due_date DATETIME,
     course_id INT UNSIGNED NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS post;
-CREATE TABLE post (
+CREATE OR REPLACE TABLE post (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     content TEXT,
@@ -110,41 +100,51 @@ CREATE TABLE post (
     course_id INT UNSIGNED NOT NULL,
     posted_by INT UNSIGNED NOT NULL,
     assignment_id INT UNSIGNED,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
     FOREIGN KEY(posted_by) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(assignment_id) REFERENCES assignment(id) ON DELETE SET NULL
 );
 
-DROP TABLE IF EXISTS grade;
-CREATE TABLE grade (
+CREATE OR REPLACE TABLE grade (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     grade CHAR(2) NOT NULL,
     min_score TINYINT UNSIGNED NOT NULL,
     max_score TINYINT UNSIGNED NOT NULL,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     CHECK (min_score >= 0 AND max_score <= 100 AND min_score <= max_score)
 );
 
-DROP TABLE IF EXISTS submission;
-CREATE TABLE submission (
+CREATE OR REPLACE TABLE submission (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     status ENUM('GRADED', 'NOT GRADED'),
     score TINYINT UNSIGNED CHECK (score BETWEEN 0 AND 100),
     grade_id INT UNSIGNED,
-    submitted_at timestamp DEFAULT NOW(),
+    submitted_at DATETIME DEFAULT NOW(),
     submitted_by INT UNSIGNED NOT NULL,
     assignment_id INT UNSIGNED NOT NULL,
     attachment_id INT UNSIGNED,
-    created_at timestamp DEFAULT NOW(),
-    updated_at timestamp DEFAULT NOW(),
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(submitted_by) REFERENCES account(id) ON DELETE CASCADE,
     FOREIGN KEY(assignment_id) REFERENCES assignment(id),
     FOREIGN KEY(grade_id) REFERENCES grade(id) ON DELETE CASCADE
+);
+
+CREATE OR REPLACE TABLE student_course_grade (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    student_id INT UNSIGNED NOT NULL,
+    course_id INT UNSIGNED NOT NULL,
+    final_score INT UNSIGNED,
+    final_grade CHAR(2) NOT NULL,
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (student_id) REFERENCES account(id),
+    FOREIGN KEY (course_id) REFERENCES course(id)
 );
 
 CREATE OR REPLACE VIEW enrollment_view AS
@@ -158,18 +158,28 @@ CREATE OR REPLACE VIEW instructor_course_view AS
     INNER JOIN course c ON ci.course_id = c.id;
 
 CREATE TRIGGER update_enrollment_on_completion
-AFTER UPDATE ON submission
-FOR EACH ROW
+    AFTER UPDATE ON submission
+    FOR EACH ROW
 BEGIN
-       IF NEW.status = 'GRADED' AND NEW.assignment_id IN (
-              SELECT id FROM assignment WHERE type = 'FINAL'
-       ) THEN
-              UPDATE enrollment
-              SET status = 'COMPLETED'
-              WHERE student_id = NEW.submitted_by AND course_id = (
-                     SELECT course_id FROM assignment WHERE id = NEW.assignment_id
-              );
-       END IF;
+    IF NEW.status = 'GRADED' AND NEW.assignment_id IN (
+        SELECT id FROM assignment WHERE type = 'FINAL'
+    ) THEN
+        UPDATE enrollment
+        SET status = 'COMPLETED'
+        WHERE student_id = NEW.submitted_by AND course_id = (
+            SELECT course_id FROM assignment WHERE id = NEW.assignment_id
+        );
+
+        INSERT INTO student_course_grade
+            (course_id, student_id, final_score, final_grade)
+        SELECT
+            course_id,
+            student_id,
+            avg_score(student_id, course_id) AS final_score,
+            get_grade(avg_score(student_id, course_id)) AS final_grade
+        FROM enrollment
+        WHERE status = 'COMPLETED' AND student_id = NEW.submitted_by;
+    END IF;
 END;
 
 CREATE TRIGGER prevent_duplicate_enrollment
@@ -240,7 +250,7 @@ BEGIN
     RETURN (submitted_assignments / total_assignments) * 100;
 END;
 
-CREATE FUNCTION get_grade(score INT)
+CREATE OR REPLACE FUNCTION get_grade(score INT)
 RETURNS VARCHAR(2)
 DETERMINISTIC
 BEGIN
@@ -268,78 +278,505 @@ BEGIN
     RETURN grade;
 END;
 
-CREATE OR REPLACE PROCEDURE show_accounts ()
+CREATE OR REPLACE FUNCTION id_from_session(
+    p_session_id VARCHAR(255)
+)
+RETURNS INT UNSIGNED
+RETURN (SELECT user_id FROM session WHERE id = p_session_id);
+
+CREATE OR REPLACE FUNCTION is_admin(
+    p_session_id VARCHAR(255)
+)
+RETURNS BOOLEAN
+RETURN (SELECT role = 'ADMIN' FROM account WHERE id = id_from_session(p_session_id));
+
+CREATE OR REPLACE FUNCTION is_instructor(
+    p_session_id VARCHAR(255)
+)
+RETURNS BOOLEAN
+RETURN (SELECT role IN ('INSTRUCTOR', 'ADMIN') FROM account WHERE id = id_from_session(p_session_id));
+
+CREATE OR REPLACE FUNCTION is_student(
+    p_session_id VARCHAR(255)
+)
+RETURNS BOOLEAN
+RETURN (SELECT role IN ('STUDENT', 'ADMIN') FROM account WHERE id = id_from_session(p_session_id));
+
+CREATE OR REPLACE PROCEDURE get_accounts(
+    p_filter_any VARCHAR(255),
+    p_id VARCHAR(255),
+    p_username VARCHAR(255),
+    p_email VARCHAR(255),
+    p_first_name VARCHAR(255),
+    p_last_name VARCHAR(255),
+    p_role VARCHAR(255)
+)
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Internal server error';
+        RESIGNAL;
     END;
 
     START TRANSACTION;
 
-    SELECT *
-    FROM account;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE show_students ()
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Internal server error';
-    END;
-
-    START TRANSACTION;
-
-    SELECT *
+    SELECT id, username, email, first_name, last_name, role
     FROM account
-    WHERE role = 'STUDENT';
+    WHERE
+        (
+            p_filter_any IS NULL OR
+            id LIKE CONCAT('%', p_filter_any, '%') OR
+            username LIKE CONCAT('%', p_filter_any, '%') OR
+            email LIKE CONCAT('%', p_filter_any, '%') OR
+            first_name LIKE CONCAT('%', p_filter_any, '%') OR
+            last_name LIKE CONCAT('%', p_filter_any, '%') OR
+            role LIKE CONCAT('%', p_filter_any, '%')
+        ) AND
+        (p_id IS NULL OR id LIKE CONCAT('%', p_id, '%')) AND
+        (p_username IS NULL OR username LIKE CONCAT('%', p_username, '%')) AND
+        (p_email IS NULL OR email LIKE CONCAT('%', p_email, '%')) AND
+        (p_first_name IS NULL OR first_name LIKE CONCAT('%', p_first_name, '%')) AND
+        (p_last_name IS NULL OR last_name LIKE CONCAT('%', p_last_name, '%')) AND
+        (p_role IS NULL OR role LIKE CONCAT('%', p_role, '%'));
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_instructors ()
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Internal server error';
-    END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM account
-    WHERE role = 'INSTRUCTOR';
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE show_courses ()
+CREATE OR REPLACE PROCEDURE get_account(
+    p_id INT UNSIGNED
+)
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
             ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
+            RESIGNAL;
         END;
 
     START TRANSACTION;
 
-    SELECT *
-    FROM course;
+    SELECT id, username, email, first_name, last_name, role
+    FROM account
+    WHERE id = p_id;
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_student_courses (
-    p_student_id INT UNSIGNED
+CREATE OR REPLACE PROCEDURE get_student(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT id, username, email, first_name, last_name, role
+    FROM account
+    WHERE id = p_id AND role = 'STUDENT';
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_instructor(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT id, username, email, first_name, last_name, role
+    FROM account
+    WHERE id = p_id AND role = 'INSTRUCTOR';
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_account(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    DELETE FROM account
+    WHERE id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE edit_account(
+    p_id INT UNSIGNED,
+    p_username VARCHAR(255),
+    p_email VARCHAR(255),
+    p_first_name VARCHAR(255),
+    p_last_name VARCHAR(255),
+    p_role VARCHAR(255),
+    p_password VARCHAR(255),
+    p_confirmation_password VARCHAR(255)
+)
+BEGIN
+    DECLARE new_password VARCHAR(255) DEFAULT NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM account
+        WHERE id = p_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Student not found';
+    end if;
+
+    IF LENGTH(p_username) < 3 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Username must at least be 3 characters long.';
+    END IF;
+
+    IF LENGTH(p_password) < 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Password must at least be 8 characters long.';
+    END IF;
+
+    IF EXISTS (
+        SELECT id
+        FROM account
+        WHERE username = p_username OR email = p_email
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Username is taken.';
+    END IF;
+
+    IF EXISTS (
+        SELECT id
+        FROM account
+        WHERE email = p_email
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This email is taken.';
+    END IF;
+
+    IF NOT (p_password = p_confirmation_password) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Password and confirmation password do not match.';
+    end if;
+
+    IF p_password IS NOT NULL THEN
+        SET new_password = PASSWORD(p_password);
+    END IF;
+
+    IF p_role NOT IN ('STUDENT', 'INSTRUCTOR', 'ADMIN') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Role does not exist';
+    END IF;
+
+    UPDATE account SET
+       username = IFNULL(p_username, username),
+       email = IFNULL(p_email, email),
+       password = IFNULL(new_password, password),
+       first_name = IFNULL(p_first_name, first_name),
+       last_name = IFNULL(p_last_name, last_name),
+       role = IFNULL(p_role, role)
+    WHERE id = p_id;
+
+    SELECT id, username, email, first_name, last_name, role
+    FROM account
+    WHERE id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE close_account(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE account_id INT UNSIGNED;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT user_id INTO account_id
+    FROM session
+    WHERE id = p_session_id;
+
+    DELETE FROM account
+    WHERE id = account_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_courses(
+    p_filter_any VARCHAR(255),
+    p_id VARCHAR(255),
+    p_name VARCHAR(255),
+    p_description TEXT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT
+        id,
+        name,
+        description
+    FROM course
+    WHERE
+        (
+            p_filter_any IS NULL OR
+            id LIKE CONCAT('%', p_filter_any, '%') OR
+            name LIKE CONCAT('%', p_filter_any, '%') OR
+            description LIKE CONCAT('%', p_filter_any, '%')
+        ) AND
+        (p_id IS NULL OR id LIKE CONCAT('%', p_id, '%')) AND
+        (p_name IS NULL OR name LIKE CONCAT('%', p_name, '%')) AND
+        (p_description IS NULL OR description LIKE CONCAT('%', p_description, '%'));
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_course(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+        END;
+
+    START TRANSACTION;
+
+    SELECT id, name, description
+    FROM course
+    WHERE id = p_id;
+
+    SELECT c.id, c.name, c.description
+    FROM course_prerequisite cp
+        INNER JOIN course c ON cp.course_id = c.id
+    WHERE c.id = p_id;
+
+    SELECT cs.id, cs.type, cs.weight
+    FROM course_specification cs
+        INNER JOIN course c ON cs.course_id = c.id
+    WHERE c.id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE add_course(
+    p_name VARCHAR(255),
+    p_description TEXT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO course (name, description)
+    VALUES (p_name, p_description);
+
+    SELECT id, name, description
+    FROM course
+    WHERE id = last_insert_id();
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE edit_course (
+    p_id INT UNSIGNED,
+    p_name VARCHAR(255),
+    p_description TEXT
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    UPDATE course SET
+        name = IFNULL(p_name, name),
+        description = IFNULL(p_description, description)
+    WHERE id = p_id;
+
+    SELECT id, name, description
+    FROM course
+    WHERE id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_course(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    DELETE FROM course
+    WHERE id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_post (
+    p_account_id INT UNSIGNED,
+    p_course_id INT UNSIGNED
+)
+BEGIN
+    DECLARE is_admin BOOL DEFAULT FALSE;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT COUNT(*) > 0
+    INTO is_admin
+    FROM account
+    WHERE id = p_account_id
+      AND role = 'ADMIN';
+
+    IF NOT is_admin AND NOT EXISTS (
+        SELECT instructor_id
+        FROM course_instructor
+        WHERE instructor_id = p_account_id
+          AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    DELETE FROM post
+    WHERE id = p_course_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_enrollments(
+    p_course_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT e.id, e.student_id, a.first_name, a.last_name, c.id, c.name, e.status
+    FROM enrollment e
+        INNER JOIN account a ON e.student_id = a.id
+        INNER JOIN course c ON e.course_id = c.id
+    WHERE c.id = p_course_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_enrollment(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT e.id, e.student_id, a.first_name, a.last_name, c.id, c.name, e.status
+    FROM enrollment e
+        INNER JOIN account a ON e.student_id = a.id
+        INNER JOIN course c ON e.course_id = c.id
+    WHERE e.id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_course_instructors(
+    p_course_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT ci.id, ci.instructor_id, a.first_name, a.last_name, c.id, c.name as 'course_name'
+    FROM course_instructor ci
+        INNER JOIN account a ON ci.instructor_id = a.id
+        INNER JOIN course c ON ci.course_id = c.id
+    WHERE c.id = p_course_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_course_instructor(
+    p_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT ci.id, ci.instructor_id, a.first_name, a.last_name, c.id as 'course_id', c.name as 'course_name'
+    FROM course_instructor ci
+         INNER JOIN account a ON ci.instructor_id = a.id
+         INNER JOIN course c ON ci.course_id = c.id
+    WHERE ci.id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_student_courses(
+    p_id INT UNSIGNED
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -351,46 +788,100 @@ BEGIN
     START TRANSACTION;
 
     IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE role = 'STUDENT' AND id = p_student_id
+        SELECT 1 FROM account
+        WHERE id = p_id AND role = 'STUDENT'
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'The provided account is not a student';
+            SET MESSAGE_TEXT = 'The provided account is not an student.';
     END IF;
 
-    SELECT id, name, status
-    FROM enrollment_view
-    WHERE student_id = p_student_id;
+    SELECT e.id, c.id as course_id, c.name as course_name, c.description as course_description, e.status
+    from account a
+        INNER JOIN enrollment e ON a.id = e.student_id
+        INNER JOIN course c ON e.course_id = c.id
+    WHERE a.id = p_id;
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_instructor_courses (
-    p_instructor_id INT UNSIGNED
+SELECT * FROM enrollment WHERE student_id = 1;
+
+CREATE OR REPLACE PROCEDURE get_instructor_courses(
+    p_id INT UNSIGNED
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
             ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
+            RESIGNAL;
         END;
 
     START TRANSACTION;
 
     IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE role = 'INSTRUCTOR' AND id = p_instructor_id
+        SELECT 1 FROM account
+        WHERE id = p_id AND role = 'INSTRUCTOR'
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'The provided account is not an instructor';
+        SET MESSAGE_TEXT = 'The provided account is not an instructor.';
     END IF;
 
-    SELECT id, name
-    FROM instructor_course_view
-    WHERE instructor_id = p_instructor_id;
+    SELECT ci.id, c.id as course_id, c.name as course_name, c.description as course_description
+    from account a
+        INNER JOIN course_instructor ci ON a.id = ci.instructor_id
+        INNER JOIN course c ON ci.course_id = c.id
+    WHERE a.id = p_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_course_instructor(
+    p_instructor_id INT UNSIGNED,
+    p_course_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM account
+        WHERE id = p_instructor_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'The provided account does not exists.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'The provided course does not exists.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM account
+        WHERE id = p_instructor_id AND role = 'INSTRUCTOR'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The provided account is not an instructor.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course_instructor
+        WHERE instructor_id = p_instructor_id AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'This instructor is not currently assigned to this course.';
+    END IF;
+
+    DELETE FROM course_instructor
+    WHERE instructor_id = p_instructor_id AND course_id = p_course_id;
 
     COMMIT;
 END;
@@ -412,23 +903,67 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_course_assignment (
+CREATE OR REPLACE PROCEDURE get_course_assignments(
     p_course_id INT UNSIGNED
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
             ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
+            RESIGNAL;
         END;
 
     START TRANSACTION;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+        SET MESSAGE_TEXT = 'Course does not exist.';
+    end if;
+
     SELECT a.id, a.title, a.detail, a.due_date
     FROM course c
-    INNER JOIN assignment a ON c.id = a.course_id
+        INNER JOIN assignment a ON c.id = a.course_id
     WHERE c.id = p_course_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_course_assignment (
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM assignment
+        WHERE id = p_assignment_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Assignment does not exist.';
+    END IF;
+
+    SELECT a.id, a.title, a.detail, a.due_date
+    FROM course c
+        INNER JOIN assignment a ON c.id = a.course_id
+    WHERE c.id = p_course_id AND a.id = p_assignment_id;
 
     COMMIT;
 END;
@@ -511,7 +1046,9 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_transcript_with_score_by_id(student_id INT)
+CREATE OR REPLACE PROCEDURE get_student_transcript(
+    p_id INT UNSIGNED
+)
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
@@ -522,26 +1059,31 @@ BEGIN
     START TRANSACTION;
 
     IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = student_id AND role = 'STUDENT'
+        SELECT 1 FROM account
+        WHERE id = p_id AND role = 'STUDENT'
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'The provided ID is not a student';
-    end if;
+        SET MESSAGE_TEXT = 'The provided ID is not a student.';
+    END IF;
 
-    SELECT CONCAT(ac.first_name, ' ', ac.last_name) AS name, c.name, ag.title AS assignment, s.score
-    FROM account ac
-        INNER JOIN submission s ON ac.id = s.submitted_by
-        INNER JOIN assignment ag ON s.assignment_id = ag.id
-        INNER JOIN course c ON ag.course_id = c.id
-        INNER JOIN enrollment e ON c.id = e.course_id AND ac.id = e.student_id
-    WHERE ac.id = student_id AND e.status = 'COMPLETED';
+    SELECT
+        c.id,
+        c.name,
+        c.description,
+        avg_score(p_id, c.id) AS final_score,
+        get_grade(avg_score(p_id, c.id)) AS final_grade
+    FROM enrollment e
+        INNER JOIN course c ON e.course_id = c.id
+    WHERE
+        e.student_id = p_id AND
+        e.status = 'COMPLETED';
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_transcript_by_id(student_id INT UNSIGNED)
+CREATE OR REPLACE PROCEDURE get_detailed_student_transcript(
+    p_student_id INT UNSIGNED
+)
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
@@ -554,31 +1096,81 @@ BEGIN
     IF NOT EXISTS (
         SELECT id
         FROM account
-        WHERE id = student_id AND role = 'STUDENT'
+        WHERE id = p_student_id AND role = 'STUDENT'
     ) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'The provided ID is not a student';
     END IF;
 
     SELECT
-        CONCAT(ac.first_name, ' ', ac.last_name) AS name,
-        c.name AS course_name,
-        ag.title AS assignment,
-        g.grade AS letter_grade
+        c.id,
+        c.name,
+        c.description,
+        scg.final_score,
+        scg.final_grade,
+        ag.id AS assignment_id,
+        ag.title AS assignment_title,
+        ag.type AS assignment_type,
+        s.score AS assignment_score,
+        g.grade AS assignment_grade
     FROM account ac
         INNER JOIN submission s ON ac.id = s.submitted_by
         INNER JOIN assignment ag ON s.assignment_id = ag.id
         INNER JOIN course c ON ag.course_id = c.id
         INNER JOIN enrollment e ON c.id = e.course_id AND ac.id = e.student_id
         INNER JOIN grade g ON s.score BETWEEN g.min_score AND g.max_score
-    WHERE ac.id = student_id AND e.status = 'COMPLETED';
+        INNER JOIN student_course_grade scg on ac.id = scg.student_id
+    WHERE ac.id = p_student_id AND e.status = 'COMPLETED';
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_detailed_student_transcript_suboptimal(
+    p_student_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (
+        SELECT id
+        FROM account
+        WHERE id = p_student_id AND role = 'STUDENT'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The provided ID is not a student';
+    END IF;
+
+    SELECT
+        c.id,
+        c.name,
+        c.description,
+        avg_score(e.student_id, c.id) AS final_score,
+        get_grade(avg_score(e.student_id, c.id)) AS final_grade,
+        ag.id AS assignment_id,
+        ag.title AS assignment_title,
+        ag.type AS assignment_type,
+        s.score AS assignment_score,
+        g.grade AS assignment_grade
+    FROM account ac
+        INNER JOIN submission s ON ac.id = s.submitted_by
+        INNER JOIN assignment ag ON s.assignment_id = ag.id
+        INNER JOIN course c ON ag.course_id = c.id
+        INNER JOIN enrollment e ON c.id = e.course_id AND ac.id = e.student_id
+        INNER JOIN grade g ON s.score BETWEEN g.min_score AND g.max_score
+    WHERE ac.id = p_student_id AND e.status = 'COMPLETED';
 
     COMMIT;
 END;
 
 CREATE OR REPLACE PROCEDURE enroll_student_to_course(
-    student_id INT UNSIGNED,
-    course_id INT UNSIGNED
+    p_student_id INT UNSIGNED,
+    p_course_id INT UNSIGNED
 )
 BEGIN
     DECLARE prerequisite_count INT UNSIGNED DEFAULT 0;
@@ -592,19 +1184,19 @@ BEGIN
     START TRANSACTION;
 
     IF NOT EXISTS (
-        SELECT id
+        SELECT 1
         FROM account
-        WHERE id = student_id AND role = 'STUDENT'
+        WHERE id = p_student_id AND role = 'STUDENT'
     ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account is not a student.';
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'This account does not have the appropriate role.';
     END IF;
 
     IF EXISTS (
-        SELECT e.course_id
+        SELECT 1
         FROM enrollment e
-        WHERE e.student_id = student_id
-          AND e.course_id = course_id
+        WHERE e.student_id = p_student_id
+          AND e.course_id = p_course_id
           AND e.status = 'ACTIVE'
     ) THEN
         SIGNAL SQLSTATE '45000'
@@ -614,7 +1206,7 @@ BEGIN
     SELECT COUNT(*)
     INTO prerequisite_count
     FROM course_prerequisite cp
-    WHERE cp.course_id = course_id;
+    WHERE cp.course_id = p_course_id;
 
     IF prerequisite_count > 0 THEN
         SELECT COUNT(*)
@@ -622,8 +1214,8 @@ BEGIN
         FROM enrollment e
         INNER JOIN course_prerequisite cp
             ON e.course_id = cp.course_id
-        WHERE e.course_id = course_id
-            AND e.student_id = student_id
+        WHERE e.course_id = p_course_id
+            AND e.student_id = p_student_id
             AND e.status = 'COMPLETED';
 
         IF completed_count < prerequisite_count THEN
@@ -633,7 +1225,7 @@ BEGIN
     END IF;
 
     INSERT INTO enrollment (student_id, course_id, status)
-    VALUES (student_id, course_id, 'ACTIVE');
+    VALUES (p_student_id, p_course_id, 'ACTIVE');
 
     COMMIT;
 END;
@@ -652,13 +1244,37 @@ BEGIN
     START TRANSACTION;
 
     IF NOT EXISTS (
+        SELECT 1 FROM account
+        WHERE id = p_student_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'The provided account does not exists.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'The provided course does not exists.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM account
+        WHERE id = p_student_id AND role = 'STUDENT'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The provided account is not a student.';
+    END IF;
+
+    IF NOT EXISTS (
         SELECT e.course_id
         FROM enrollment e
         WHERE e.student_id = p_student_id
             AND e.course_id = p_course_id
             AND e.status = 'ACTIVE'
     ) THEN
-        SIGNAL SQLSTATE '45000'
+        SIGNAL SQLSTATE '45404'
         SET MESSAGE_TEXT = 'This student is not currently taking this course.';
     END IF;
 
@@ -750,7 +1366,6 @@ BEGIN
 END;
 
 CREATE OR REPLACE PROCEDURE assign_instructor_to_course(
-    p_assigner_id INT UNSIGNED,
     p_instructor_id INT UNSIGNED,
     p_course_id INT UNSIGNED
 )
@@ -763,24 +1378,12 @@ BEGIN
 
     START TRANSACTION;
 
-    IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = p_assigner_id
-            AND role = 'ADMIN'
+    IF EXISTS (
+        SELECT 1 FROM course_instructor
+        WHERE instructor_id = p_instructor_id
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account is not authorized to assign an instructor to a course.';
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = p_instructor_id
-            AND role = 'INSTRUCTOR'
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'The provided instructor ID does not have the role "INSTRUCTOR".';
+            SET MESSAGE_TEXT = 'This instructor is already assigned to this course.';
     END IF;
 
     INSERT INTO course_instructor (instructor_id, course_id)
@@ -1073,112 +1676,13 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE create_course(
-    p_account_id INT UNSIGNED,
-    p_course_name VARCHAR(255),
-    p_course_description TEXT
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
-
-    IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = p_account_id
-            AND role = 'ADMIN'
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have the required permission.';
-    end if;
-
-    INSERT INTO course (name, description)
-    VALUES (p_course_name, p_course_description);
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE edit_course (
-    p_account_id INT UNSIGNED,
-    p_course_id INT UNSIGNED,
-    p_course_name VARCHAR(255),
-    p_course_description TEXT
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
-
-    IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = p_account_id
-            AND role = 'ADMIN'
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have the required permission.';
-    END IF;
-
-    UPDATE course
-    SET name = IFNULL(p_course_name, name),
-        description = IFNULL(p_course_description, description)
-    WHERE id = p_course_id;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE delete_course (
-    p_account_id INT UNSIGNED,
-    p_course_id INT UNSIGNED
-)
-BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            RESIGNAL;
-        END;
-
-    START TRANSACTION;
-
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_account_id
-      AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
-        SELECT instructor_id
-        FROM course_instructor
-        WHERE instructor_id = p_account_id
-          AND course_id = p_course_id
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
-    END IF;
-
-    DELETE FROM post
-    WHERE id = p_course_id;
-
-    COMMIT;
-END;
-
 CREATE OR REPLACE PROCEDURE register (
     p_username VARCHAR(255),
     p_email VARCHAR(255),
     p_password VARCHAR(255),
     p_fname VARCHAR(255),
     p_lname VARCHAR(255),
-    p_role ENUM('ADMIN', 'INSTRUCTOR', 'STUDENT')
+    p_role VARCHAR(255)
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -1212,6 +1716,11 @@ BEGIN
     IF p_role = 'ADMIN' THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Not authorized.';
+    END IF;
+
+    IF p_role NOT IN ('STUDENT', 'INSTRUCTOR') THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Role does not exist.';
     END IF;
 
     IF EXISTS (
@@ -1250,10 +1759,9 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT s.id, s.user_id, s.expires_at, a.id
-    FROM session s
-    INNER JOIN account a ON s.user_id = a.id
-    WHERE s.id = p_session_id;
+    SELECT id, user_id, expires_at
+    FROM session
+    WHERE id = p_session_id;
 
     COMMIT;
 END ;
@@ -1317,8 +1825,8 @@ BEGIN
     WHERE id = p_session_id;
 
     IF session_id IS NULL OR curr_time >= expires_at THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Not authorized';
+        SIGNAL SQLSTATE '45401'
+        SET MESSAGE_TEXT = 'No authorization included in the request.';
     END IF;
 
     IF curr_time >= expires_at - INTERVAL 12 HOUR THEN
@@ -1330,8 +1838,20 @@ BEGIN
     FROM session
     WHERE id = session_id;
 
+    CALL get_account_from_session(p_session_id);
+
     COMMIT;
-END ;
+END;
+
+SELECT id, user_id, expires_at
+FROM session
+WHERE id = 'ce289260-acd8-11ef-93ee-e66131d59671';
+
+
+CREATE OR REPLACE PROCEDURE get_sessions()
+    BEGIN
+        SELECT * FROM session;
+    end;
 
 CREATE OR REPLACE PROCEDURE create_session(
     p_user_id INT UNSIGNED
@@ -1355,7 +1875,9 @@ BEGIN
     WHERE id = uuid;
 
     COMMIT;
-END ;
+END;
+
+SELECT * FROM session;
 
 CREATE OR REPLACE PROCEDURE logout(
     p_session_id VARCHAR(255)
@@ -1439,3 +1961,89 @@ BEGIN
 
     COMMIT;
 END;
+
+CREATE OR REPLACE PROCEDURE get_account_from_session(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT a.id, a.username, a.email, a.first_name, a.last_name, a.role
+    FROM session s
+        INNER JOIN account a ON s.user_id = a.id
+    WHERE s.id = p_session_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE check_admin(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_admin(p_session_id) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
+    END IF;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE check_instructor(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_instructor(p_session_id) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
+    END IF;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE check_student(
+    p_session_id VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_student(p_session_id) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
+    END IF;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE sandbox()
+BEGIN
+    SELECT id, username FROM account WHERE role = 'ADMIN';
+    SELECT id, username FROM account WHERE role = 'STUDENT';
+end;
