@@ -1,9 +1,12 @@
 import { db } from "@/db";
 import type { User } from "@/lib/types";
 import { HTTPException } from "hono/http-exception";
+import { instructorCoursesRouter } from "./courses";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 
 const router = createValidatedRouter();
+
+router.route("/courses", instructorCoursesRouter);
 
 router.get("/", async (c) => {
     const id = c.req.param("id");
