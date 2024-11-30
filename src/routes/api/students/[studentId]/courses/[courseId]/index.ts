@@ -2,8 +2,11 @@ import { db } from "@/db";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isStudent } from "@/middlewares/authorization";
 import { HTTPException } from "hono/http-exception";
+import { courseReportsRouter } from "./reports";
 
 const router = createValidatedRouter();
+
+router.route("/reports", courseReportsRouter);
 
 router.delete("/", isStudent, async (c) => {
     const courseId = c.req.param("courseId");
