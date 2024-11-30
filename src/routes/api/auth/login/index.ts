@@ -11,6 +11,7 @@ router.post("/", async (c) => {
 
     const user = (await db.login<User>(email, password)).data[0];
     const session = (await db.create_session<Session>(user.id)).data[0];
+    console.log(session.expires_at);
 
     setCookie(c, "auth_session", session.id, {
         httpOnly: true,

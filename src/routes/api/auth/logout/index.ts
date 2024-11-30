@@ -1,11 +1,13 @@
 import { db } from "@/db";
-import { Hono } from "hono";
-import { deleteCookie, getCookie } from "hono/cookie";
+import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { deleteCookie } from "hono/cookie";
 
-const router = new Hono();
+const router = createValidatedRouter();
 
 router.delete("/", async (c) => {
-    const token = getCookie(c, "auth_session");
+    const token = c.get("session").id;
+    console.log(c.get("user"));
+    console.log(c.get("session"));
     await db.logout(token);
 
     deleteCookie(c, "auth_session");
