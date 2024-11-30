@@ -2,7 +2,6 @@ import mysql, {
     type ProcedureCallPacket,
     type ResultSetHeader,
 } from "mysql2/promise";
-import type { Branded } from "@/lib/types";
 
 export const pool = mysql.createPool({
     host: Bun.env.DB_HOST,
@@ -12,7 +11,9 @@ export const pool = mysql.createPool({
     database: Bun.env.DB_NAME,
 });
 
-export async function call<TData extends Branded<string> | Branded<string>[]>(
+type ReturnedResult = Record<string, unknown>;
+
+export async function call<TData extends ReturnedResult | ReturnedResult[]>(
     name: string,
     ...params: unknown[]
 ) {
@@ -21,17 +22,16 @@ export async function call<TData extends Branded<string> | Branded<string>[]>(
         params,
     );
 
-    type TypedData<T> = Omit<T, "__branded">;
     type TypedResult<TData> = TData extends unknown[]
         ? {
-            [Key in keyof TData]: TypedData<TData[Key]>[];
+            [Key in keyof TData]: TData[Key][];
         }
-        : TypedData<TData>[];
+        : TData[];
 
     if (Array.isArray(queryResult)) {
         const result = queryResult.length > 2 ? queryResult : queryResult[0];
         return {
-            data: result as unknown as TypedResult<TData>,
+            data: result as TypedResult<TData>,
             setHeader: queryResult.pop() as ResultSetHeader,
         };
     }
@@ -51,7 +51,7 @@ export const db = new Proxy(
     },
 ) as Record<
     string,
-    <TData extends Branded<string> | Branded<string>[]>(
+    <TData extends ReturnedResult | ReturnedResult[]>(
         ...params: unknown[]
     ) => ReturnType<typeof call<TData>>
 >;
