@@ -1,0 +1,16 @@
+meta {
+  name: del one
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/posts/:postId
+  body: json
+  auth: none
+}
+
+params:path {
+  postId: 1
+  courseId: 1
+}

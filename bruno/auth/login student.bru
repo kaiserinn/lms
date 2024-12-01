@@ -1,0 +1,18 @@
+meta {
+  name: login student
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "student1@example.com",
+    "password": "password"
+  }
+}

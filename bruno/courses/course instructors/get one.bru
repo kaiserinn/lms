@@ -1,0 +1,16 @@
+meta {
+  name: get one
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/instructors/:courseInstructorId
+  body: json
+  auth: none
+}
+
+params:path {
+  courseInstructorId: 1
+  courseId: 2
+}

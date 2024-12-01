@@ -1,0 +1,21 @@
+meta {
+  name: update one
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:id
+  body: json
+  auth: none
+}
+
+params:path {
+  id: 1
+}
+
+body:json {
+  {
+    "description": "Deskripsi desain web"
+  }
+}

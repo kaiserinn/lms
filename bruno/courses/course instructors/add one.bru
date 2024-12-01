@@ -1,0 +1,16 @@
+meta {
+  name: add one
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/instructors/:instructorId
+  body: json
+  auth: none
+}
+
+params:path {
+  instructorId: 6
+  courseId: 2
+}

@@ -1,0 +1,22 @@
+meta {
+  name: add one
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/posts
+  body: json
+  auth: none
+}
+
+params:path {
+  courseId: 1
+}
+
+body:json {
+  {
+    "title": "New Post",
+    "content": "This is a new post!"
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: get
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/students/:studentId/transcript?detailed=true
+  body: none
+  auth: none
+}
+
+params:query {
+  detailed: true
+}
+
+params:path {
+  studentId: 1
+}

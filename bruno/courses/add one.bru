@@ -1,0 +1,18 @@
+meta {
+  name: add one
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Desain Grafis",
+    "description": "Desain grafis atau rancang grafis adalah proses komunikasi menggunakan elemen visual, seperti tipografi, fotografi, serta ilustrasi yang dimaksudkan untuk menciptakan persepsi akan suatu pesan yang disampaikan."
+  }
+}

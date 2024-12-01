@@ -1,0 +1,23 @@
+meta {
+  name: update one
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/posts/:postId
+  body: json
+  auth: none
+}
+
+params:path {
+  postId: 1
+  courseId: 1
+}
+
+body:json {
+  {
+    "title": "Edited Post",
+    "content": "This is an edited post!"
+  }
+}

@@ -1,0 +1,18 @@
+meta {
+  name: login instructor
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "instructor1@example.com",
+    "password": "password"
+  }
+}

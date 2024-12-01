@@ -1,0 +1,21 @@
+meta {
+  name: get all
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/accounts
+  body: none
+  auth: none
+}
+
+params:query {
+  ~filter: any: instructor
+  ~filter: username: student
+  ~filter: role: ADMIN
+  ~filter: id: 1
+  ~filter: email: admin
+  ~filter: first_name: tony
+  ~filter: last_name: stark
+}
