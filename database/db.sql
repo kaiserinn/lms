@@ -84,28 +84,26 @@ CREATE OR REPLACE TABLE assignment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     type ENUM('QUIZ', 'MID_TERM', 'FINAL') NOT NULL,
     title VARCHAR(255),
-    detail TEXT,
+    content TEXT,
     due_date DATETIME,
     course_id INT UNSIGNED NOT NULL,
+    created_by INT UNSIGNED NOT NULL,
     created_at DATETIME DEFAULT NOW(),
     updated_at DATETIME DEFAULT NOW(),
-    FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE
+    FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
+    FOREIGN KEY(created_by) REFERENCES account(id) ON DELETE CASCADE
 );
 
 CREATE OR REPLACE TABLE post (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     content TEXT,
-    attachment_id INT UNSIGNED,
     course_id INT UNSIGNED NOT NULL,
     posted_by INT UNSIGNED NOT NULL,
-    assignment_id INT UNSIGNED,
     created_at DATETIME DEFAULT NOW(),
     updated_at DATETIME DEFAULT NOW(),
-    FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
-    FOREIGN KEY(posted_by) REFERENCES account(id) ON DELETE CASCADE,
-    FOREIGN KEY(assignment_id) REFERENCES assignment(id) ON DELETE SET NULL
+    FOREIGN KEY(posted_by) REFERENCES account(id) ON DELETE CASCADE
 );
 
 CREATE OR REPLACE TABLE grade (
@@ -285,22 +283,22 @@ RETURNS INT UNSIGNED
 RETURN (SELECT user_id FROM session WHERE id = p_session_id);
 
 CREATE OR REPLACE FUNCTION is_admin(
-    p_session_id VARCHAR(255)
+    p_id INT UNSIGNED
 )
 RETURNS BOOLEAN
-RETURN (SELECT role = 'ADMIN' FROM account WHERE id = id_from_session(p_session_id));
+RETURN (SELECT role = 'ADMIN' FROM account WHERE id = p_id);
 
 CREATE OR REPLACE FUNCTION is_instructor(
-    p_session_id VARCHAR(255)
+    p_id INT UNSIGNED
 )
 RETURNS BOOLEAN
-RETURN (SELECT role IN ('INSTRUCTOR', 'ADMIN') FROM account WHERE id = id_from_session(p_session_id));
+RETURN (SELECT role IN ('INSTRUCTOR', 'ADMIN') FROM account WHERE id = p_id);
 
 CREATE OR REPLACE FUNCTION is_student(
-    p_session_id VARCHAR(255)
+    p_id INT UNSIGNED
 )
 RETURNS BOOLEAN
-RETURN (SELECT role IN ('STUDENT', 'ADMIN') FROM account WHERE id = id_from_session(p_session_id));
+RETURN (SELECT role IN ('STUDENT', 'ADMIN') FROM account WHERE id = p_id);
 
 CREATE OR REPLACE PROCEDURE get_accounts(
     p_filter_any VARCHAR(255),
@@ -776,7 +774,11 @@ BEGIN
 END;
 
 CREATE OR REPLACE PROCEDURE get_student_courses(
-    p_id INT UNSIGNED
+    p_id INT UNSIGNED,
+    p_filter_any VARCHAR(255),
+    p_course_id VARCHAR(255),
+    p_name VARCHAR(255),
+    p_description TEXT
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -799,7 +801,17 @@ BEGIN
     from account a
         INNER JOIN enrollment e ON a.id = e.student_id
         INNER JOIN course c ON e.course_id = c.id
-    WHERE a.id = p_id;
+    WHERE
+        a.id = p_id AND
+        (
+            p_filter_any IS NULL OR
+            c.id LIKE CONCAT('%', p_filter_any, '%') OR
+            c.name LIKE CONCAT('%', p_filter_any, '%') OR
+            c.description LIKE CONCAT('%', p_filter_any, '%')
+        ) AND
+        (p_course_id IS NULL OR c.id LIKE CONCAT('%', p_course_id, '%')) AND
+        (p_name IS NULL OR c.name LIKE CONCAT('%', p_name, '%')) AND
+        (p_description IS NULL OR c.description LIKE CONCAT('%', p_description, '%'));
 
     COMMIT;
 END;
@@ -886,7 +898,7 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_assignments ()
+CREATE OR REPLACE PROCEDURE get_assignments ()
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
@@ -904,7 +916,11 @@ BEGIN
 END;
 
 CREATE OR REPLACE PROCEDURE get_course_assignments(
-    p_course_id INT UNSIGNED
+    p_course_id INT UNSIGNED,
+    p_filter_any VARCHAR(255),
+    p_assignment_id INT UNSIGNED,
+    p_title VARCHAR(255),
+    p_due_date DATETIME
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -923,10 +939,29 @@ BEGIN
         SET MESSAGE_TEXT = 'Course does not exist.';
     end if;
 
-    SELECT a.id, a.title, a.detail, a.due_date
+    SELECT
+        ag.id,
+        ag.title,
+        ag.content,
+        ag.due_date,
+        ag.course_id,
+        c.name,
+        c.description,
+        ag.created_by,
+        a.username,
+        a.email,
+        a.first_name,
+        a.last_name,
+        a.role
     FROM course c
-        INNER JOIN assignment a ON c.id = a.course_id
-    WHERE c.id = p_course_id;
+        INNER JOIN assignment ag ON c.id = ag.course_id
+        INNER JOIN account a ON ag.created_by = a.id
+    WHERE
+        c.id = p_course_id
+        AND (p_filter_any IS NULL OR ag.title LIKE CONCAT('%', p_filter_any, '%'))
+        AND (p_assignment_id IS NULL OR ag.id = p_assignment_id)
+        AND (p_title IS NULL OR ag.title LIKE CONCAT('%', p_title, '%'))
+        AND (p_due_date IS NULL OR ag.due_date = p_due_date);
 
     COMMIT;
 END;
@@ -960,10 +995,24 @@ BEGIN
             SET MESSAGE_TEXT = 'Assignment does not exist.';
     END IF;
 
-    SELECT a.id, a.title, a.detail, a.due_date
+    SELECT
+        ag.id,
+        ag.title,
+        ag.content,
+        ag.due_date,
+        ag.course_id,
+        c.name,
+        c.description,
+        ag.created_by,
+        a.username,
+        a.email,
+        a.first_name,
+        a.last_name,
+        a.role
     FROM course c
-        INNER JOIN assignment a ON c.id = a.course_id
-    WHERE c.id = p_course_id AND a.id = p_assignment_id;
+        INNER JOIN assignment ag ON c.id = ag.course_id
+        INNER JOIN account a ON ag.created_by = a.id
+    WHERE c.id = p_course_id AND ag.id = p_assignment_id;
 
     COMMIT;
 END;
@@ -1023,25 +1072,35 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE show_reports (student_id INT, course_id INT)
+CREATE OR REPLACE PROCEDURE get_course_reports (
+    p_student_id INT,
+    p_course_id INT
+)
 BEGIN
+    DECLARE final_score INT DEFAULT avg_score(p_student_id, p_course_id);
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
         BEGIN
             ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
+            RESIGNAL;
         END;
 
     START TRANSACTION;
 
-    SELECT CONCAT(ac.first_name, ' ', ac.last_name) AS name, c.name, ag.title AS assignment, s.score
+    SELECT
+        ag.id,
+        ag.title,
+        ag.type,
+        s.score,
+        get_grade(s.score) AS grade
     FROM account ac
         INNER JOIN submission s ON ac.id = s.submitted_by
         INNER JOIN assignment ag ON s.assignment_id = ag.id
         INNER JOIN course c ON ag.course_id = c.id
-    WHERE ac.id = student_id AND c.id = course_id;
+    WHERE ac.id = p_student_id AND c.id = p_course_id;
 
-    SELECT avg_score(student_id, course_id);
+    SELECT
+        final_score,
+        get_grade(final_score) AS final_grade;
 
     COMMIT;
 END;
@@ -1435,7 +1494,7 @@ BEGIN
         SET MESSAGE_TEXT = 'There is already a mid term or final assignment in this course.';
     END IF;
 
-    INSERT INTO assignment (type, title, detail, due_date, course_id)
+    INSERT INTO assignment (type, title, content, due_date, course_id)
     VALUES (p_type, p_title, p_detail, p_due_date, p_course_id);
 
     COMMIT;
@@ -1446,7 +1505,7 @@ CREATE OR REPLACE PROCEDURE edit_assignment(
     p_assignment_id INT UNSIGNED,
     p_type ENUM('QUIZ', 'MID_TERM', 'FINAL'),
     p_title VARCHAR(255),
-    p_detail TEXT,
+    p_content TEXT,
     p_due_date DATETIME,
     p_course_id INT UNSIGNED
 )
@@ -1488,7 +1547,7 @@ BEGIN
     UPDATE assignment
     SET type = IFNULL(p_type, type),
         title = IFNULL(p_title, title),
-        detail = IFNULL(p_detail, detail),
+        content = IFNULL(p_content, content),
         due_date = IFNULL(p_due_date, due_date),
         course_id = IFNULL(p_course_id, course_id)
     WHERE id = p_assignment_id;
@@ -1538,18 +1597,95 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE create_post(
-    p_creator_id INT UNSIGNED,
+CREATE OR REPLACE PROCEDURE get_posts(
+    p_course_id INT UNSIGNED,
+    p_filter_any VARCHAR(255),
+    p_id INT UNSIGNED,
     p_title VARCHAR(255),
     p_content TEXT,
-    p_course_id INT UNSIGNED,
-    p_assignment_id INT UNSIGNED,
-    p_file_path VARCHAR(255),
-    p_file_name VARCHAR(255)
+    p_posted_by INT UNSIGNED
 )
 BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
-    DECLARE attachment_id INT UNSIGNED DEFAULT NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT
+        p.id,
+        p.title,
+        p.content,
+        p.course_id,
+        p.posted_by,
+        a.first_name,
+        a.last_name,
+        a.username,
+        a.email,
+        a.role
+    FROM post p
+        INNER JOIN account a ON p.posted_by = a.id
+    WHERE
+        p.course_id = p_course_id AND
+        (
+            p_filter_any IS NULL OR
+            p.id LIKE CONCAT('%', p_filter_any, '%') OR
+            p.title LIKE CONCAT('%', p_filter_any, '%') OR
+            p.content LIKE CONCAT('%', p_filter_any, '%') OR
+            p.posted_by LIKE CONCAT('%', p_filter_any, '%')
+        ) AND
+        (p_id IS NULL OR p.id = p_id) AND
+        (p_title IS NULL OR p.title LIKE CONCAT('%', p_title, '%')) AND
+        (p_content IS NULL OR p.content LIKE CONCAT('%', p_content, '%')) AND
+        (p_posted_by IS NULL OR p.posted_by = p_posted_by);
+
+   COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_post(
+    p_course_id INT UNSIGNED,
+    p_post_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    SELECT
+        p.id,
+        p.title,
+        p.content,
+        p.posted_by,
+        a.first_name,
+        a.last_name,
+        a.username,
+        a.email,
+        a.role,
+        p.course_id,
+        c.name,
+        c.description
+    FROM post p
+        INNER JOIN account a ON p.posted_by = a.id
+        INNER JOIN course c ON p.course_id = c.id
+    WHERE
+        p.course_id = p_course_id AND p.id = p_post_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE add_post(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_title VARCHAR(255),
+    p_content TEXT
+)
+BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -1558,77 +1694,132 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_creator_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
-        SELECT instructor_id
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1
         FROM course_instructor
-        WHERE instructor_id = p_creator_id
-            AND course_id = p_course_id
+        WHERE instructor_id = p_user_id
+          AND course_id = p_course_id
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
     END IF;
 
-    IF p_file_path IS NOT NULL THEN
-        INSERT INTO attachment (file_path, name)
-        VALUES (p_file_path, p_file_name);
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+        SET MESSAGE_TEXT = 'Course does not exist.';
+    end if;
 
-        SET attachment_id = LAST_INSERT_ID();
-    END IF;
+    INSERT INTO post
+        (title, content, course_id, posted_by)
+    VALUES
+        (p_title, p_content, p_course_id, p_user_id);
 
-    INSERT INTO post (title, content, attachment_id, course_id, posted_by, assignment_id)
-    VALUES (p_title, p_content, attachment_id, p_course_id, p_creator_id, p_assignment_id);
+    SELECT title, content, course_id, post.posted_by
+    FROM post
+    WHERE id = LAST_INSERT_ID();
 
     COMMIT;
 END;
 
 CREATE OR REPLACE PROCEDURE edit_post(
-    p_creator_id INT UNSIGNED,
+    p_user_id INT UNSIGNED,
     p_post_id INT UNSIGNED,
-    p_title VARCHAR(255),
-    p_content TEXT,
     p_course_id INT UNSIGNED,
-    p_assignment_id INT UNSIGNED,
-    p_attachment_id INT UNSIGNED
+    p_title VARCHAR(255),
+    p_content TEXT
 )
 BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
 
     START TRANSACTION;
 
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_creator_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
-        SELECT instructor_id
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1
         FROM course_instructor
-        WHERE instructor_id = p_creator_id
-            AND course_id = p_course_id
+        WHERE instructor_id = p_user_id
+          AND course_id = p_course_id
     ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM post
+        WHERE id = p_post_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Post does not exist.';
     END IF;
 
     UPDATE post
     SET title = IFNULL(p_title, title),
         content = IFNULL(p_content, content),
-        course_id = IFNULL(p_course_id, course_id),
-        posted_by = IFNULL(p_creator_id, posted_by),
-        assignment_id = IFNULL(p_assignment_id, assignment_id),
-        attachment_id = IFNULL(p_attachment_id, attachment_id)
+        posted_by = IFNULL(p_user_id, posted_by)
+    WHERE id = p_post_id;
+
+    SELECT title, content, course_id, posted_by
+    FROM post
+    WHERE id = p_post_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_post(
+    p_user_id INT UNSIGNED,
+    p_post_id INT UNSIGNED,
+    p_course_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1
+        FROM course_instructor
+        WHERE instructor_id = p_user_id
+          AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM post
+        WHERE id = p_post_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Post does not exist.';
+    END IF;
+
+    DELETE FROM post
     WHERE id = p_post_id;
 
     COMMIT;
@@ -1994,7 +2185,7 @@ BEGIN
 
     START TRANSACTION;
 
-    IF NOT is_admin(p_session_id) THEN
+    IF NOT is_admin(id_from_session(p_session_id)) THEN
         SIGNAL SQLSTATE '45403'
             SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
     END IF;
@@ -2014,7 +2205,7 @@ BEGIN
 
     START TRANSACTION;
 
-    IF NOT is_instructor(p_session_id) THEN
+    IF NOT is_instructor(id_from_session(p_session_id)) THEN
         SIGNAL SQLSTATE '45403'
             SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
     END IF;
@@ -2034,7 +2225,7 @@ BEGIN
 
     START TRANSACTION;
 
-    IF NOT is_student(p_session_id) THEN
+    IF NOT is_student(id_from_session(p_session_id)) THEN
         SIGNAL SQLSTATE '45403'
             SET MESSAGE_TEXT = 'You are not authorized to access this resource.';
     END IF;
