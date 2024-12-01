@@ -1,3 +1,14 @@
+type MergeRest<T> = T extends [infer Head, ...infer Rest]
+    ? Omit<Head, "id"> & MergeRest<Rest>
+    : unknown;
+
+export type Merge<T extends Record<string, unknown>[]> = T extends [
+    infer Head,
+    ...infer Rest,
+]
+    ? Head & MergeRest<Rest>
+    : never;
+
 export type User = {
     id: number;
     username: string;
@@ -39,7 +50,7 @@ export type Grade = {
     min_score: number;
     max_score: number;
     grade: LetterGrade;
-}
+};
 
 export type Enrollment = {
     id: number;
@@ -62,7 +73,7 @@ export type Assignment = {
     due_date: Date | null;
     course_id: number;
     created_by: number;
-}
+};
 
 export type Submission = {
     id: number;
@@ -71,7 +82,7 @@ export type Submission = {
     submitted_by: number;
     submitted_at: Date;
     assignment_id: number;
-}
+};
 
 export type Post = {
     id: number;
@@ -79,4 +90,4 @@ export type Post = {
     content: string | null;
     posted_by: User;
     course_id: number;
-}
+};
