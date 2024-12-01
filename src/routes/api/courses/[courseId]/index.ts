@@ -6,8 +6,11 @@ import type {
 import { isAdmin } from "@/middlewares/authorization";
 import { HTTPException } from "hono/http-exception";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { postsRouter } from "./posts";
 
 const router = createValidatedRouter();
+
+router.route("/posts", postsRouter);
 
 router.get("/", async (c) => {
     const id = c.req.param("courseId");
