@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import type { User } from "@/lib/types";
-import { singleAccountRouter } from "./[id]";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { singleAccountRouter } from "./[id]";
 
 const router = createValidatedRouter();
 

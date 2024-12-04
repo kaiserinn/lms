@@ -1,8 +1,8 @@
+import { validateSession } from "@/middlewares/validateSession";
 import { Hono } from "hono";
 import { loginRouter } from "./login";
 import { logoutRouter } from "./logout";
 import { registerRouter } from "./register";
-import { validateSession } from "@/middlewares/validateSession";
 
 const router = new Hono();
 

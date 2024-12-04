@@ -1,15 +1,18 @@
 import { db } from "@/db";
-import type {
-    Course,
-    CourseSpecification,
-} from "@/lib/types";
+import type { Course, CourseSpecification } from "@/lib/types";
+import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isAdmin } from "@/middlewares/authorization";
 import { HTTPException } from "hono/http-exception";
-import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { assignmentsRouter } from "./assignments";
+import { enrollmentsRouter } from "./enrollments";
+import { courseInstructorsRouter } from "./instructors";
 import { postsRouter } from "./posts";
 
 const router = createValidatedRouter();
 
+router.route("/assignments", assignmentsRouter);
+router.route("/enrollments", enrollmentsRouter);
+router.route("/instructors", courseInstructorsRouter);
 router.route("/posts", postsRouter);
 
 router.get("/", async (c) => {
