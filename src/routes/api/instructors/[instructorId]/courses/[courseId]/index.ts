@@ -13,7 +13,7 @@ router.delete("/", isInstructor, async (c) => {
 
     if (user.role === "STUDENT" && user.id !== Number(instructorId)) {
         throw new HTTPException(403, {
-            message: "You are not authorized to access this resource."
+            message: "You are not authorized to access this resource.",
         });
     }
 

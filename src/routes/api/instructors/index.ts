@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import type { User } from "@/lib/types";
-import { singleInstructorRouter } from "./[instructorId]";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { singleInstructorRouter } from "./[instructorId]";
 
 const router = createValidatedRouter();
 
@@ -16,7 +16,7 @@ router.get("/", async (c) => {
         filter["filter:email"],
         filter["filter:first_name"],
         filter["filter:last_name"],
-        "INSTRUCTOR"
+        "INSTRUCTOR",
     );
 
     return c.json({
