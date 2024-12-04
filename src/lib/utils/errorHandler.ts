@@ -21,8 +21,12 @@ export const errorHandler: ErrorHandler = (err, c) => {
             const status = sqlStateToHttpStatus[sqlState] || 400;
             return c.json({ error: err.message }, status);
         }
+
+        if (sqlState === "23000") {
+            return c.json({ error: "Constraint error: " }, 400);
+        }
     }
 
     console.error(err);
     return c.json({ error: "Internal server error." }, 500);
-}
+};
