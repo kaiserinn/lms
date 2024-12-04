@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { User, Session } from "../types";
+import type { Session, User } from "../types";
 
 export function createValidatedRouter() {
     type Variables = {

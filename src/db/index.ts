@@ -24,8 +24,8 @@ export async function call<TData extends ReturnedResult | ReturnedResult[]>(
 
     type TypedResult<TData> = TData extends unknown[]
         ? {
-            [Key in keyof TData]: TData[Key][];
-        }
+              [Key in keyof TData]: TData[Key][];
+          }
         : TData[];
 
     if (Array.isArray(queryResult)) {
