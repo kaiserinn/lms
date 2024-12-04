@@ -72,7 +72,7 @@ CREATE OR REPLACE TABLE course_specification (
 
 CREATE OR REPLACE TABLE attachment (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255),
+    file_name VARCHAR(255),
     file_path VARCHAR(255) NOT NULL,
     owner INT UNSIGNED NOT NULL,
     created_at DATETIME DEFAULT NOW(),
@@ -88,9 +88,11 @@ CREATE OR REPLACE TABLE assignment (
     due_date DATETIME,
     course_id INT UNSIGNED NOT NULL,
     created_by INT UNSIGNED NOT NULL,
+    attachment_id INT UNSIGNED,
     created_at DATETIME DEFAULT NOW(),
     updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
+    FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(created_by) REFERENCES account(id) ON DELETE CASCADE
 );
 
@@ -100,9 +102,11 @@ CREATE OR REPLACE TABLE post (
     content TEXT,
     course_id INT UNSIGNED NOT NULL,
     posted_by INT UNSIGNED NOT NULL,
+    attachment_id INT UNSIGNED,
     created_at DATETIME DEFAULT NOW(),
     updated_at DATETIME DEFAULT NOW(),
     FOREIGN KEY(course_id) REFERENCES course(id) ON DELETE CASCADE,
+    FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(posted_by) REFERENCES account(id) ON DELETE CASCADE
 );
 
@@ -120,17 +124,17 @@ CREATE OR REPLACE TABLE submission (
     id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     status ENUM('GRADED', 'NOT GRADED'),
     score TINYINT UNSIGNED CHECK (score BETWEEN 0 AND 100),
-    grade_id INT UNSIGNED,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
     submitted_at DATETIME DEFAULT NOW(),
     submitted_by INT UNSIGNED NOT NULL,
-    assignment_id INT UNSIGNED NOT NULL,
     attachment_id INT UNSIGNED,
+    assignment_id INT UNSIGNED NOT NULL,
     created_at DATETIME DEFAULT NOW(),
     updated_at DATETIME DEFAULT NOW(),
-    FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
     FOREIGN KEY(submitted_by) REFERENCES account(id) ON DELETE CASCADE,
-    FOREIGN KEY(assignment_id) REFERENCES assignment(id),
-    FOREIGN KEY(grade_id) REFERENCES grade(id) ON DELETE CASCADE
+    FOREIGN KEY(attachment_id) REFERENCES attachment(id) ON DELETE CASCADE,
+    FOREIGN KEY(assignment_id) REFERENCES assignment(id) ON DELETE CASCADE
 );
 
 CREATE OR REPLACE TABLE student_course_grade (
@@ -145,6 +149,61 @@ CREATE OR REPLACE TABLE student_course_grade (
     FOREIGN KEY (course_id) REFERENCES course(id)
 );
 
+CREATE OR REPLACE view submission_detail_view AS
+    SELECT
+        sub.id,
+        sub.title,
+        sub.content,
+        sub.status,
+        sub.score,
+        sub.submitted_at,
+        sub.assignment_id,
+        ag.type,
+        ag.title AS assignment_title,
+        ag.due_date,
+        ag.course_id,
+        sub.submitted_by,
+        acc.username,
+        acc.email,
+        acc.first_name,
+        acc.last_name,
+        acc.role,
+        c.name,
+        c.description,
+        sub.attachment_id,
+        at.file_name,
+        at.file_path
+    FROM submission sub
+        INNER JOIN account acc ON sub.submitted_by = acc.id
+        INNER JOIN assignment ag ON sub.assignment_id = ag.id
+        INNER JOIN course c ON ag.course_id = c.id
+        LEFT JOIN attachment at ON sub.attachment_id = at.id;
+
+CREATE OR REPLACE VIEW course_assignment_detail_view AS
+    SELECT
+        ag.id,
+        ag.type,
+        ag.title,
+        ag.content,
+        ag.due_date,
+        ag.course_id,
+        c.name,
+        c.description,
+        ag.created_by,
+        a.username,
+        a.email,
+        a.first_name,
+        a.last_name,
+        a.role,
+        ag.attachment_id,
+        at.file_name,
+        at.file_path,
+        at.owner
+    FROM course c
+        INNER JOIN assignment ag ON c.id = ag.course_id
+        INNER JOIN account a ON ag.created_by = a.id
+        LEFT JOIN attachment at on a.id = at.owner;
+
 CREATE OR REPLACE VIEW enrollment_view AS
     SELECT c.id, c.name, e.status, e.student_id
     FROM enrollment e
@@ -155,7 +214,7 @@ CREATE OR REPLACE VIEW instructor_course_view AS
     FROM course_instructor ci
     INNER JOIN course c ON ci.course_id = c.id;
 
-CREATE TRIGGER update_enrollment_on_completion
+CREATE OR REPLACE TRIGGER update_enrollment_on_completion
     AFTER UPDATE ON submission
     FOR EACH ROW
 BEGIN
@@ -180,7 +239,7 @@ BEGIN
     END IF;
 END;
 
-CREATE TRIGGER prevent_duplicate_enrollment
+CREATE OR REPLACE TRIGGER prevent_duplicate_enrollment
     BEFORE INSERT ON enrollment
     FOR EACH ROW
 BEGIN
@@ -188,12 +247,23 @@ BEGIN
 
     SELECT COUNT(*) INTO enrollment_count
     FROM enrollment
-    WHERE student_id = NEW.student_id AND course_id = NEW.course_id;
+    WHERE student_id = NEW.student_id AND course_id = NEW.course_id AND status = 'ACTIVE';
 
     IF enrollment_count > 0 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'You are already enrolled in this course.';
+            SET MESSAGE_TEXT = 'This student is already enrolled in this course.';
     END IF;
+END;
+
+CREATE OR REPLACE TRIGGER delete_attachment_on_assignment_delete
+    BEFORE DELETE ON assignment
+    FOR EACH ROW
+BEGIN
+    DELETE FROM attachment
+    WHERE id IN (
+        SELECT attachment_id FROM assignment
+        WHERE id = OLD.id
+    );
 END;
 
 CREATE OR REPLACE TRIGGER cascade_delete_assignment
@@ -204,30 +274,30 @@ BEGIN
     WHERE assignment_id = OLD.id;
 END;
 
-CREATE OR REPLACE FUNCTION avg_score(student_id INT UNSIGNED, course_id INT UNSIGNED)
+CREATE OR REPLACE FUNCTION avg_score(p_student_id INT UNSIGNED, p_course_id INT UNSIGNED)
 RETURNS DECIMAL(5, 2)
 BEGIN
        DECLARE quiz DECIMAL;
        DECLARE mid_term DECIMAL;
        DECLARE final DECIMAL;
 
-       SELECT AVG(s.score) * ((SELECT weight FROM course_specification cs WHERE cs.course_id = course_id AND cs.type = "QUIZ") / 100)
+       SELECT AVG(s.score) * ((SELECT weight FROM course_specification cs WHERE cs.course_id = p_course_id AND cs.type = "QUIZ") / 100)
        INTO quiz
        FROM submission s
               INNER JOIN assignment a ON s.assignment_id = a.id
-       WHERE s.submitted_by = student_id AND a.course_id = course_id AND a.type = "QUIZ";
+       WHERE s.submitted_by = p_student_id AND a.course_id = p_course_id AND a.type = "QUIZ";
 
-       SELECT s.score * ((SELECT weight FROM course_specification cp WHERE cp.course_id = course_id AND cp.type = "MID_TERM") / 100)
+       SELECT s.score * ((SELECT weight FROM course_specification cp WHERE cp.course_id = p_course_id AND cp.type = "MID_TERM") / 100)
        INTO mid_term
        FROM submission s
               INNER JOIN assignment a ON s.assignment_id = a.id
-       WHERE s.submitted_by = student_id AND a.course_id = course_id AND a.type = "MID_TERM";
+       WHERE s.submitted_by = p_student_id AND a.course_id = p_course_id AND a.type = "MID_TERM" LIMIT 1;
 
-       SELECT s.score * ((SELECT weight FROM course_specification cp WHERE cp.course_id = course_id AND cp.type = "FINAL") / 100)
+       SELECT s.score * ((SELECT weight FROM course_specification cp WHERE cp.course_id = p_course_id AND cp.type = "FINAL") / 100)
        INTO final
        FROM submission s
               INNER JOIN assignment a ON s.assignment_id = a.id
-       WHERE s.submitted_by = student_id AND a.course_id = course_id AND a.type = "FINAL";
+       WHERE s.submitted_by = p_student_id AND a.course_id = p_course_id AND a.type = "FINAL" LIMIT 1;
 
        RETURN quiz + mid_term + final;
 END;
@@ -599,6 +669,11 @@ BEGIN
 
     START TRANSACTION;
 
+    IF LENGTH(p_name) = 0 OR p_name IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Name cannot be empty.';
+    END IF;
+
     INSERT INTO course (name, description)
     VALUES (p_name, p_description);
 
@@ -622,6 +697,11 @@ BEGIN
     END;
 
     START TRANSACTION;
+
+    IF LENGTH(p_name) = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Name cannot be empty.';
+    END IF;
 
     UPDATE course SET
         name = IFNULL(p_name, name),
@@ -649,42 +729,6 @@ BEGIN
 
     DELETE FROM course
     WHERE id = p_id;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE delete_post (
-    p_account_id INT UNSIGNED,
-    p_course_id INT UNSIGNED
-)
-BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            RESIGNAL;
-        END;
-
-    START TRANSACTION;
-
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_account_id
-      AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
-        SELECT instructor_id
-        FROM course_instructor
-        WHERE instructor_id = p_account_id
-          AND course_id = p_course_id
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
-    END IF;
-
-    DELETE FROM post
-    WHERE id = p_course_id;
 
     COMMIT;
 END;
@@ -778,7 +822,8 @@ CREATE OR REPLACE PROCEDURE get_student_courses(
     p_filter_any VARCHAR(255),
     p_course_id VARCHAR(255),
     p_name VARCHAR(255),
-    p_description TEXT
+    p_description TEXT,
+    p_status VARCHAR(255)
 )
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -807,16 +852,16 @@ BEGIN
             p_filter_any IS NULL OR
             c.id LIKE CONCAT('%', p_filter_any, '%') OR
             c.name LIKE CONCAT('%', p_filter_any, '%') OR
-            c.description LIKE CONCAT('%', p_filter_any, '%')
+            c.description LIKE CONCAT('%', p_filter_any, '%') OR
+            e.status LIKE CONCAT('%', p_filter_any, '%')
         ) AND
         (p_course_id IS NULL OR c.id LIKE CONCAT('%', p_course_id, '%')) AND
         (p_name IS NULL OR c.name LIKE CONCAT('%', p_name, '%')) AND
-        (p_description IS NULL OR c.description LIKE CONCAT('%', p_description, '%'));
+        (p_description IS NULL OR c.description LIKE CONCAT('%', p_description, '%')) AND
+        (p_status IS NULL OR e.status LIKE CONCAT('%', p_status, '%'));
 
     COMMIT;
 END;
-
-SELECT * FROM enrollment WHERE student_id = 1;
 
 CREATE OR REPLACE PROCEDURE get_instructor_courses(
     p_id INT UNSIGNED
@@ -898,23 +943,6 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE get_assignments ()
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
-        END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM assignment;
-
-    COMMIT;
-END;
-
 CREATE OR REPLACE PROCEDURE get_course_assignments(
     p_course_id INT UNSIGNED,
     p_filter_any VARCHAR(255),
@@ -939,34 +967,18 @@ BEGIN
         SET MESSAGE_TEXT = 'Course does not exist.';
     end if;
 
-    SELECT
-        ag.id,
-        ag.title,
-        ag.content,
-        ag.due_date,
-        ag.course_id,
-        c.name,
-        c.description,
-        ag.created_by,
-        a.username,
-        a.email,
-        a.first_name,
-        a.last_name,
-        a.role
-    FROM course c
-        INNER JOIN assignment ag ON c.id = ag.course_id
-        INNER JOIN account a ON ag.created_by = a.id
+    SELECT * FROM course_assignment_detail_view
     WHERE
-        c.id = p_course_id
-        AND (p_filter_any IS NULL OR ag.title LIKE CONCAT('%', p_filter_any, '%'))
-        AND (p_assignment_id IS NULL OR ag.id = p_assignment_id)
-        AND (p_title IS NULL OR ag.title LIKE CONCAT('%', p_title, '%'))
-        AND (p_due_date IS NULL OR ag.due_date = p_due_date);
+        course_id = p_course_id
+        AND (p_filter_any IS NULL OR title LIKE CONCAT('%', p_filter_any, '%'))
+        AND (p_assignment_id IS NULL OR id = p_assignment_id)
+        AND (p_title IS NULL OR title LIKE CONCAT('%', p_title, '%'))
+        AND (p_due_date IS NULL OR due_date = p_due_date);
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE get_course_assignment (
+CREATE OR REPLACE PROCEDURE get_course_assignment(
     p_course_id INT UNSIGNED,
     p_assignment_id INT UNSIGNED
 )
@@ -995,79 +1007,8 @@ BEGIN
             SET MESSAGE_TEXT = 'Assignment does not exist.';
     END IF;
 
-    SELECT
-        ag.id,
-        ag.title,
-        ag.content,
-        ag.due_date,
-        ag.course_id,
-        c.name,
-        c.description,
-        ag.created_by,
-        a.username,
-        a.email,
-        a.first_name,
-        a.last_name,
-        a.role
-    FROM course c
-        INNER JOIN assignment ag ON c.id = ag.course_id
-        INNER JOIN account a ON ag.created_by = a.id
-    WHERE c.id = p_course_id AND ag.id = p_assignment_id;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE show_posts ()
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
-        END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM post;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE show_course_posts (
-    p_course_id INT UNSIGNED
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
-        END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM post p
-    INNER JOIN course c ON p.course_id = c.id
-    WHERE c.id = p_course_id;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE show_attachments ()
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = 'Internal server error';
-        END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM attachment;
+    SELECT * FROM course_assignment_detail_view
+    WHERE course_id = p_course_id AND id = p_assignment_id;
 
     COMMIT;
 END;
@@ -1243,23 +1184,20 @@ BEGIN
     START TRANSACTION;
 
     IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
         SELECT 1
         FROM account
         WHERE id = p_student_id AND role = 'STUDENT'
     ) THEN
         SIGNAL SQLSTATE '45403'
             SET MESSAGE_TEXT = 'This account does not have the appropriate role.';
-    END IF;
-
-    IF EXISTS (
-        SELECT 1
-        FROM enrollment e
-        WHERE e.student_id = p_student_id
-          AND e.course_id = p_course_id
-          AND e.status = 'ACTIVE'
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'This student is already enrolled in this course.';
     END IF;
 
     SELECT COUNT(*)
@@ -1346,40 +1284,10 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE submit_assignment (
-    IN p_student_id INT UNSIGNED,
-    IN p_assignment_id INT UNSIGNED,
-    IN p_attachment_id INT UNSIGNED
-)
-BEGIN
-    DECLARE assignment_due_date DATETIME;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
-
-    SELECT due_date INTO assignment_due_date
-    FROM assignment
-    WHERE id = p_assignment_id;
-
-    IF NOW() > assignment_due_date THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'The assignment is past the due date.';
-    END IF;
-
-    INSERT INTO submission (status, submitted_by, assignment_id, attachment_id)
-    VALUES
-        ('NOT GRADED', p_student_id, p_assignment_id, p_attachment_id);
-
-    COMMIT;
-END;
-
 CREATE OR REPLACE PROCEDURE grade_submission(
-    p_instructor_id INT UNSIGNED,
-    p_student_id INT UNSIGNED,
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED,
     p_submission_id INT UNSIGNED,
     p_score INT UNSIGNED
 )
@@ -1392,34 +1300,24 @@ BEGIN
 
     START TRANSACTION;
 
-    IF NOT EXISTS (
-        SELECT id
-        FROM account
-        WHERE id = p_instructor_id
-            AND role IN ('ADMIN', 'INSTRUCTOR')
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1 FROM course_instructor
+        WHERE id = p_user_id
     ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account is not authorized to grade student\'s submissions.';
+        SIGNAL SQLSTATE '45403'
+        SET MESSAGE_TEXT = 'Not authorized for this course.';
     END IF;
 
-    IF NOT EXISTS (
-        SELECT id
-        FROM submission
-        WHERE id = p_submission_id
-            AND submitted_by = p_student_id
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Submission not found or does not belong to the student.';
-    END IF;
-
-    IF p_score < 0 OR p_score > 100 THEN
+    IF p_score < 0 OR p_score > 100 OR p_score IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Score must be between 0 and 100.';
     END IF;
 
     UPDATE submission
     SET score = p_score
-    WHERE id = p_submission_id;
+    WHERE id = p_submission_id AND assignment_id = p_assignment_id;
+
+    CALL get_submission(p_course_id, p_assignment_id, p_submission_id);
 
     COMMIT;
 END;
@@ -1439,7 +1337,7 @@ BEGIN
 
     IF EXISTS (
         SELECT 1 FROM course_instructor
-        WHERE instructor_id = p_instructor_id
+        WHERE instructor_id = p_instructor_id AND course_id = p_course_id
     ) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'This instructor is already assigned to this course.';
@@ -1451,16 +1349,16 @@ BEGIN
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE create_assignment(
-    p_creator_id INT UNSIGNED,
-    p_type ENUM('QUIZ', 'MID_TERM', 'FINAL'),
+CREATE OR REPLACE PROCEDURE add_assignment(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_type VARCHAR(255),
     p_title VARCHAR(255),
-    p_detail TEXT,
+    p_content TEXT,
     p_due_date DATETIME,
-    p_course_id INT UNSIGNED
+    p_attachment_id INT UNSIGNED
 )
 BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -1469,20 +1367,37 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_creator_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
         SELECT instructor_id
         FROM course_instructor
-        WHERE instructor_id = p_creator_id
-            AND course_id = p_course_id
+        WHERE instructor_id = p_user_id
+          AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    IF p_type NOT IN ('QUIZ', 'MID_TERM', 'FINAL') OR p_type IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Type is not valid.';
+    END IF;
+
+    IF LENGTH(p_title) = 0 OR p_title IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Title cannot be empty.';
+    END IF;
+
+    IF p_due_date < NOW() THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Date is not valid.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+            SET MESSAGE_TEXT = 'Course does not exist.';
     END IF;
 
     IF p_type IN ('MID_TERM', 'FINAL') AND EXISTS (
@@ -1494,45 +1409,69 @@ BEGIN
         SET MESSAGE_TEXT = 'There is already a mid term or final assignment in this course.';
     END IF;
 
-    INSERT INTO assignment (type, title, content, due_date, course_id)
-    VALUES (p_type, p_title, p_detail, p_due_date, p_course_id);
+    INSERT INTO assignment
+        (type, title, content, due_date, course_id, created_by, attachment_id)
+    VALUES
+        (p_type,p_title, p_content, p_due_date, p_course_id, p_user_id, p_attachment_id);
+
+    CALL get_course_assignment(p_course_id, LAST_INSERT_ID());
 
     COMMIT;
 END;
 
 CREATE OR REPLACE PROCEDURE edit_assignment(
-    p_creator_id INT UNSIGNED,
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
     p_assignment_id INT UNSIGNED,
-    p_type ENUM('QUIZ', 'MID_TERM', 'FINAL'),
+    p_type VARCHAR(255),
     p_title VARCHAR(255),
     p_content TEXT,
     p_due_date DATETIME,
-    p_course_id INT UNSIGNED
+    p_attachment_id INT UNSIGNED
 )
 BEGIN
-    DECLARE is_admin BOOL DEFAULT FALSE;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
 
     START TRANSACTION;
 
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_creator_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
         SELECT instructor_id
         FROM course_instructor
-        WHERE instructor_id = p_creator_id
-            AND course_id = p_course_id
+        WHERE instructor_id = p_user_id
+          AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    IF p_type NOT IN ('QUIZ', 'MID_TERM', 'FINAL') AND p_type IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Type is not valid.';
+    END IF;
+
+    IF p_due_date < NOW() THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Date is not valid.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM attachment
+        WHERE id = p_attachment_id
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Attachment does not exist.';
     END IF;
 
     IF p_type IN ('MID_TERM', 'FINAL') AND EXISTS (
@@ -1541,7 +1480,7 @@ BEGIN
         WHERE type IN ('MID_TERM', 'FINAL')
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'There is already a mid term or final assignment in this course.';
+            SET MESSAGE_TEXT = 'There is already a mid term or final assignment in this course.';
     END IF;
 
     UPDATE assignment
@@ -1549,19 +1488,20 @@ BEGIN
         title = IFNULL(p_title, title),
         content = IFNULL(p_content, content),
         due_date = IFNULL(p_due_date, due_date),
-        course_id = IFNULL(p_course_id, course_id)
+        attachment_id = IFNULL(p_attachment_id, attachment_id)
     WHERE id = p_assignment_id;
+
+    CALL get_course_assignment(p_course_id, p_assignment_id);
 
     COMMIT;
 END;
 
-CREATE OR REPLACE PROCEDURE drop_assignment (
-    p_account_id INT UNSIGNED,
+CREATE OR REPLACE PROCEDURE delete_assignment(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
     p_assignment_id INT UNSIGNED
 )
 BEGIN
-    DECLARE course_to_be_deleted INT UNSIGNED;
-    DECLARE is_admin BOOL DEFAULT FALSE;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -1570,29 +1510,249 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT course_id
-    INTO course_to_be_deleted
-    FROM assignment
-    WHERE id = p_assignment_id;
-
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_account_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
         SELECT instructor_id
         FROM course_instructor
-        WHERE instructor_id = p_account_id
-            AND course_id = course_to_be_deleted
+        WHERE instructor_id = p_user_id
+            AND course_id = p_course_id
     ) THEN
-        SIGNAL SQLSTATE '45000'
+        SIGNAL SQLSTATE '45403'
         SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
     END IF;
 
+    SELECT at.file_path
+    FROM attachment at
+         INNER JOIN assignment ag ON at.id = ag.attachment_id
+    WHERE ag.id = p_assignment_id;
+
     DELETE FROM assignment
+    WHERE id = p_assignment_id AND course_id = p_course_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_submissions(
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED,
+    p_filter_any VARCHAR(255),
+    p_submission_id INT UNSIGNED,
+    p_status VARCHAR(255),
+    p_title VARCHAR(255),
+    p_submitted_by INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM assignment
+        WHERE id = p_assignment_id AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+        SET MESSAGE_TEXT = 'Assignment does not exist.';
+    END IF;
+
+    SELECT
+        sub.id,
+        sub.status,
+        sub.score,
+        sub.title,
+        sub.content,
+        sub.submitted_at,
+        sub.assignment_id,
+        sub.submitted_by
+    FROM submission sub
+        INNER JOIN assignment ag ON sub.assignment_id = ag.id
+    WHERE
+        sub.assignment_id = p_assignment_id
+        AND ag.course_id = p_course_id
+        AND (p_assignment_id IS NULL OR sub.assignment_id = p_assignment_id)
+        AND (
+            p_filter_any IS NULL OR sub.status LIKE CONCAT('%', p_filter_any, '%')
+            OR sub.title LIKE CONCAT('%', p_filter_any, '%')
+            OR ag.title LIKE CONCAT('%', p_filter_any, '%')
+        )
+        AND (p_submission_id IS NULL OR sub.id = p_submission_id)
+        AND (p_status IS NULL OR sub.status = p_status)
+        AND (p_title IS NULL OR sub.title = p_title)
+        AND (p_submitted_by IS NULL OR sub.submitted_by = p_submitted_by);
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE get_submission(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED,
+    p_submission_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_admin(p_user_id) AND NOT is_instructor(p_user_id) AND NOT EXISTS (
+        SELECT 1 FROM submission
+        WHERE id = p_submission_id AND submitted_by = p_user_id
+    ) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'You are not authorized to access this resouce.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM course
+        WHERE id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Course does not exist.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM assignment
+        WHERE id = p_assignment_id AND course_id = p_course_id
+    ) THEN
+        SIGNAL SQLSTATE '45404'
+            SET MESSAGE_TEXT = 'Assignment does not exist.';
+    END IF;
+
+    SELECT * FROM submission_detail_view
+    WHERE
+        assignment_id = p_assignment_id
+        AND course_id = p_course_id
+        AND id = p_submission_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE delete_submission(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED,
+    p_submission_id INT UNSIGNED
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1 FROM submission
+        WHERE submitted_by = p_user_id
+    ) THEN
+        SIGNAL SQLSTATE '45403'
+            SET MESSAGE_TEXT = 'This account doesn\'t have permission to delete this submission.';
+    END IF;
+
+    SELECT at.file_path
+    FROM attachment at
+         INNER JOIN submission sub ON at.id = sub.attachment_id
+    WHERE sub.id = p_submission_id;
+
+    DELETE FROM submission
+    WHERE assignment_id = p_assignment_id AND id = p_submission_id;
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE add_submission(
+    p_user_id INT UNSIGNED,
+    p_course_id INT UNSIGNED,
+    p_assignment_id INT UNSIGNED,
+    p_attachment_id INT UNSIGNED,
+    p_title VARCHAR(255),
+    p_content TEXT
+)
+BEGIN
+    DECLARE assignment_due_date DATETIME;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF NOT is_admin(p_user_id) AND NOT EXISTS (
+        SELECT 1 FROM enrollment
+        WHERE student_id = p_user_id AND status = 'ACTIVE'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This student is not actively enrolled in the course';
+    END IF;
+
+    SELECT due_date INTO assignment_due_date
+    FROM assignment
     WHERE id = p_assignment_id;
+
+    IF NOW() > assignment_due_date THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The assignment is past the due date.';
+    END IF;
+
+    INSERT INTO submission (status, submitted_by, assignment_id, attachment_id, title, content)
+    VALUES
+        ('NOT GRADED', p_user_id, p_assignment_id, p_attachment_id, p_title, p_content);
+
+    CALL get_submission(p_course_id, p_assignment_id, LAST_INSERT_ID());
+
+    COMMIT;
+END;
+
+CREATE OR REPLACE PROCEDURE add_attachment(
+    p_user_id INT UNSIGNED,
+    p_file_name VARCHAR(255),
+    p_file_path VARCHAR(255)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
+
+    START TRANSACTION;
+
+    IF LENGTH(p_file_name) = 0 OR p_file_path IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'File name cannot be empty.';
+    END IF;
+
+    IF LENGTH(p_file_path) = 0 OR p_file_path IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'File name cannot be empty.';
+    END IF;
+
+    INSERT INTO attachment
+        (file_name, file_path, owner)
+    VALUES
+        (p_file_name, p_file_path, p_user_id);
+
+    SELECT
+        at.id,
+        at.file_name,
+        at.file_path,
+        at.owner,
+        ac.username,
+        ac.email,
+        ac.first_name,
+        ac.last_name,
+        ac.role
+    FROM attachment at
+        INNER JOIN account ac
+    WHERE at.id = LAST_INSERT_ID();
 
     COMMIT;
 END;
@@ -1702,6 +1862,11 @@ BEGIN
     ) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
+    END IF;
+
+    IF LENGTH(p_title) = 0 OR p_title IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Title cannot be empty.';
     END IF;
 
     IF NOT EXISTS (
@@ -1817,48 +1982,6 @@ BEGIN
     ) THEN
         SIGNAL SQLSTATE '45404'
             SET MESSAGE_TEXT = 'Post does not exist.';
-    END IF;
-
-    DELETE FROM post
-    WHERE id = p_post_id;
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE drop_assignment(
-    p_account_id INT UNSIGNED,
-    p_post_id INT UNSIGNED
-)
-BEGIN
-    DECLARE course_to_be_deleted INT UNSIGNED;
-    DECLARE is_admin BOOL DEFAULT FALSE;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
-
-    SELECT course_id
-    INTO course_to_be_deleted
-    FROM post
-    WHERE id = p_post_id;
-
-    SELECT COUNT(*) > 0
-    INTO is_admin
-    FROM account
-    WHERE id = p_account_id
-        AND role = 'ADMIN';
-
-    IF NOT is_admin AND NOT EXISTS (
-        SELECT instructor_id
-        FROM course_instructor
-        WHERE instructor_id = p_account_id
-            AND course_id = course_to_be_deleted
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'This account doesn\'t have permission for this course.';
     END IF;
 
     DELETE FROM post
@@ -2034,16 +2157,6 @@ BEGIN
     COMMIT;
 END;
 
-SELECT id, user_id, expires_at
-FROM session
-WHERE id = 'ce289260-acd8-11ef-93ee-e66131d59671';
-
-
-CREATE OR REPLACE PROCEDURE get_sessions()
-    BEGIN
-        SELECT * FROM session;
-    end;
-
 CREATE OR REPLACE PROCEDURE create_session(
     p_user_id INT UNSIGNED
 )
@@ -2067,8 +2180,6 @@ BEGIN
 
     COMMIT;
 END;
-
-SELECT * FROM session;
 
 CREATE OR REPLACE PROCEDURE logout(
     p_session_id VARCHAR(255)
@@ -2122,33 +2233,6 @@ BEGIN
     SELECT id, username, email, first_name, last_name, role
     FROM account
     WHERE email = p_email AND password = PASSWORD(p_password);
-
-    COMMIT;
-END;
-
-CREATE OR REPLACE PROCEDURE global_search (
-    search_string VARCHAR(255)
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            RESIGNAL;
-        END;
-
-    START TRANSACTION;
-
-    SELECT *
-    FROM course
-    WHERE name LIKE CONCAT('%', search_string, '%');
-
-    SELECT *
-    FROM assignment
-    WHERE title LIKE CONCAT('%', search_string, '%');
-
-    SELECT *
-    FROM post
-    WHERE title LIKE CONCAT('%', search_string, '%');
 
     COMMIT;
 END;
@@ -2232,9 +2316,3 @@ BEGIN
 
     COMMIT;
 END;
-
-CREATE OR REPLACE PROCEDURE sandbox()
-BEGIN
-    SELECT id, username FROM account WHERE role = 'ADMIN';
-    SELECT id, username FROM account WHERE role = 'STUDENT';
-end;

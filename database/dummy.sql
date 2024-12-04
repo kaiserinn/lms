@@ -10,17 +10,17 @@ INSERT INTO account (username, email, password, first_name, last_name, role) VAL
     ('admin1', 'admin1@example.com', PASSWORD('password'), 'Tony', 'Stark', 'ADMIN'),
     ('admin2', 'admin2@example.com', PASSWORD('password'), 'Steve', 'Rogers', 'ADMIN');
 
-INSERT INTO course (name) VALUES
-    ('Desain Web'),
-    ('Struktur Data'),
-    ('Basis Data'),
-    ('Grafika Komputer'),
-    ('Matematika Diskrit'),
-    ('Kalkulus'),
-    ('Fisika Dasar'),
-    ('Kimia Dasar'),
-    ('Arsitektur Komputer'),
-    ('Aljabar Linier');
+INSERT INTO course (id, name) VALUES
+    (1, 'Desain Web'),
+    (2, 'Struktur Data'),
+    (3, 'Basis Data'),
+    (4, 'Grafika Komputer'),
+    (5, 'Matematika Diskrit'),
+    (6, 'Kalkulus'),
+    (7, 'Fisika Dasar'),
+    (8, 'Kimia Dasar'),
+    (9, 'Arsitektur Komputer'),
+    (10, 'Aljabar Linier');
 
 INSERT INTO course_prerequisite (course_id, prerequisite_id) VALUES
     (4, 2),
@@ -85,9 +85,9 @@ INSERT INTO course_specification (course_id, type, weight) VALUES
     (10, 'QUIZ', 20), (10, 'MID_TERM', 40), (10, 'FINAL', 40);
 
 INSERT INTO assignment (type, due_date, course_id, title, created_by) VALUES
-    ('QUIZ', '2024-10-30 23:59:59', 1, 'Desain Web Quiz 1', 6),
-    ('MID_TERM', '2024-11-15 23:59:59', 1, 'Desain Web Mid-Term Exam', 7),
-    ('FINAL', '2024-12-15 23:59:59', 1, 'Desain Web Final Exam', 8),
+    ('QUIZ', '2025-10-30 23:59:59', 1, 'Desain Web Quiz 1', 6),
+    ('MID_TERM', '2025-11-15 23:59:59', 1, 'Desain Web Mid-Term Exam', 7),
+    ('FINAL', '2025-12-15 23:59:59', 1, 'Desain Web Final Exam', 8),
 
     ('QUIZ', '2024-10-31 23:59:59', 2, 'Struktur Data Quiz 1', 6),
     ('MID_TERM', '2024-11-16 23:59:59', 2, 'Struktur Data Mid-Term Exam', 8),
@@ -134,14 +134,34 @@ INSERT INTO grade (grade, min_score, max_score) VALUES
     ('D', 41, 50),
     ('E', 0, 40);
 
-INSERT INTO submission (status, score, submitted_by, assignment_id)
+INSERT INTO submission (status, score, submitted_by, assignment_id, title, content)
 VALUES
-    ('GRADED', 86, 1, 4),
-    ('GRADED', 75, 1, 5),
-    ('GRADED', 60, 1, 6),
-    ('GRADED', 70, 1, 13),
-    ('GRADED', 90, 1, 14),
-    ('GRADED', 90, 1, 15);
+    ('GRADED', 86, 1, 4, 'Quiz Submission: Desain Web Quiz 1', 'Completed the quiz with all required answers.'),
+    ('GRADED', 75, 1, 5, 'Mid-Term Submission: Desain Web Mid-Term', 'Submitted answers for the mid-term exam.'),
+    ('GRADED', 60, 1, 6, 'Final Exam Submission: Desain Web Final', 'Completed the final exam. Some questions were skipped.'),
+    ('GRADED', 70, 1, 13, 'Quiz Submission: Matematika Diskrit Quiz 1', 'Finished the quiz with detailed solutions.'),
+    ('GRADED', 90, 1, 14, 'Mid-Term Submission: Matematika Diskrit Mid-Term', 'Answered all questions in the mid-term.'),
+    ('GRADED', 90, 1, 15, 'Final Exam Submission: Matematika Diskrit Final', 'Well-prepared for the final exam.'),
+
+    ('GRADED', 84, 2, 16, 'Quiz Submission: Kalkulus Quiz 1', 'Detailed solutions were provided for all quiz questions.'),
+    ('GRADED', 95, 2, 17, 'Mid-Term Submission: Kalkulus Mid-Term', 'Scored excellently on the mid-term exam.'),
+    ('GRADED', 70, 2, 18, 'Final Exam Submission: Kalkulus Final', 'The final exam was challenging but manageable.'),
+
+    ('GRADED', 92, 3, 16, 'Quiz Submission: Kalkulus Quiz 1', 'All questions solved with precision.'),
+    ('GRADED', 88, 3, 17, 'Mid-Term Submission: Kalkulus Mid-Term', 'Provided answers to all sections of the mid-term.'),
+    ('GRADED', 90, 3, 18, 'Final Exam Submission: Kalkulus Final', 'High-quality responses in the final exam.'),
+
+    ('GRADED', 82, 3, 22, 'Quiz Submission: Grafika Komputer Quiz 1', 'Solid performance in the computer graphics quiz.'),
+    ('GRADED', 78, 3, 23, 'Mid-Term Submission: Grafika Komputer Mid-Term', 'Successfully tackled all mid-term challenges.'),
+    ('GRADED', 80, 3, 24, 'Final Exam Submission: Grafika Komputer Final', 'Answers were comprehensive and detailed.'),
+
+    ('GRADED', 72, 4, 22, 'Quiz Submission: Grafika Komputer Quiz 1', 'Attempted most questions with good accuracy.'),
+    ('GRADED', 88, 4, 23, 'Mid-Term Submission: Grafika Komputer Mid-Term', 'Mid-term exam was completed successfully.'),
+    ('GRADED', 70, 4, 24, 'Final Exam Submission: Grafika Komputer Final', 'Final exam was moderately challenging.'),
+
+    ('GRADED', 75, 5, 4, 'Quiz Submission: Desain Web Quiz 1', 'Additional attempt to perfect previous submission.'),
+    ('GRADED', 95, 5, 5, 'Mid-Term Submission: Desain Web Mid-Term', 'Revised submission with improved answers.'),
+    ('GRADED', 72, 5, 6, 'Final Exam Submission: Desain Web Final', 'Updated final exam answers for clarity.');
 
 INSERT INTO post (title, content, course_id, posted_by) VALUES
 -- Posts related to course 1: 'Desain Web' (Instructors: 6, 7, 8)
