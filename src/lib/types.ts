@@ -71,23 +71,33 @@ export type Assignment = {
     title: string;
     content: string | null;
     due_date: Date | null;
-    course_id: number;
-    created_by: number;
+    course_id: Course | number;
+    created_by: User | number;
+    attachment_id: Attachment | number | null;
 };
 
 export type Submission = {
     id: number;
     score: number | null;
     status: "GRADED" | "NOT GRADED";
-    submitted_by: number;
+    title: string;
+    content: string;
+    submitted_by: User | number;
     submitted_at: Date;
-    assignment_id: number;
+    assignment_id: Assignment | number;
 };
 
 export type Post = {
     id: number;
     title: string;
     content: string | null;
-    posted_by: User;
-    course_id: number;
+    posted_by: User | number;
+    course_id: Course | number;
+};
+
+export type Attachment = {
+    id: number;
+    file_name: string;
+    file_path: string;
+    owner: User | number;
 };
