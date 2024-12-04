@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/students/:studentId/transcript?detailed=true
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/students/:studentId/transcript?detailed=false
   body: none
   auth: none
 }
 
 params:query {
-  detailed: true
+  detailed: false
 }
 
 params:path {

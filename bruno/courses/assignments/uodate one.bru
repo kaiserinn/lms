@@ -1,16 +1,23 @@
 meta {
-  name: get one
+  name: uodate one
   type: http
-  seq: 2
+  seq: 5
 }
 
-get {
+patch {
   url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId
-  body: none
+  body: json
   auth: none
 }
 
 params:path {
-  assignmentId: 3
+  assignmentId: 2
   courseId: 1
+}
+
+body:json {
+  {
+    "title": "Edited Title",
+    "attachment_id": 1
+  }
 }

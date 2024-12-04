@@ -1,0 +1,23 @@
+meta {
+  name: grade one
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId/submissions/:submissionId
+  body: json
+  auth: none
+}
+
+params:path {
+  submissionId: 22
+  assignmentId: 1
+  courseId: 1
+}
+
+body:json {
+  {
+    "score": 100
+  }
+}

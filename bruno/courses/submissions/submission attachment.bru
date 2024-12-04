@@ -1,0 +1,22 @@
+meta {
+  name: submission attachment
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/files
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  file: @file(/home/azhar/Pictures/istriku.webp)
+}
+
+script:post-response {
+  if (res.status === 200) {
+    const addedId = res.body.id;
+    bru.setVar("addedAttachmentId", addedId);
+  }
+}

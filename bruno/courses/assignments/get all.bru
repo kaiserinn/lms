@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/1/assignments
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments
   body: none
   auth: none
+}
+
+params:path {
+  courseId: 1
 }

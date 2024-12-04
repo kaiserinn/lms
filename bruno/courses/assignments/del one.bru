@@ -1,16 +1,16 @@
 meta {
-  name: get one
+  name: del one
   type: http
-  seq: 2
+  seq: 6
 }
 
-get {
+delete {
   url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId
-  body: none
+  body: json
   auth: none
 }
 
 params:path {
-  assignmentId: 3
+  assignmentId: 1
   courseId: 1
 }

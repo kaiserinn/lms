@@ -1,0 +1,17 @@
+meta {
+  name: del one
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId/submissions/:submissionId
+  body: json
+  auth: none
+}
+
+params:path {
+  submissionId: 1
+  assignmentId: 4
+  courseId: 2
+}

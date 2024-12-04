@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/instructors/6
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/instructors/:instructorId
   body: none
   auth: none
+}
+
+params:path {
+  instructorId: 6
 }

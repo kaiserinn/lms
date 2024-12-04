@@ -1,0 +1,23 @@
+meta {
+  name: add one
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId/submissions
+  body: json
+  auth: none
+}
+
+params:path {
+  assignmentId: 1
+  courseId: 1
+}
+
+body:json {
+  {
+    "title": "New Title",
+    "content": "New content."
+  }
+}

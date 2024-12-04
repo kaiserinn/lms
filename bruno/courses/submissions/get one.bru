@@ -1,0 +1,17 @@
+meta {
+  name: get one
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{PROTOCOL}}://{{URL}}/{{PREFIX}}/courses/:courseId/assignments/:assignmentId/submissions/:submissionId
+  body: none
+  auth: none
+}
+
+params:path {
+  submissionId: 1
+  assignmentId: 4
+  courseId: 2
+}

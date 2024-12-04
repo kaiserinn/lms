@@ -11,9 +11,9 @@ get {
 }
 
 params:query {
-  ~filter: any: instructor
+  ~filter:role: ADMIN
+  ~filter:any: instructor
   ~filter: username: student
-  ~filter: role: ADMIN
   ~filter: id: 1
   ~filter: email: admin
   ~filter: first_name: tony
