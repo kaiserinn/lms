@@ -1,11 +1,5 @@
 import { db } from "@/db";
-import type {
-    Assignment,
-    Course,
-    CourseSpecification,
-    LetterGrade,
-    Submission,
-} from "@/lib/types";
+import type { Assignment, Course, LetterGrade } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { groupBy } from "@/lib/utils/groupBy";
 
@@ -19,6 +13,7 @@ router.get("/", async (c) => {
         type DetailedTranscript = {
             id: number;
             name: string;
+            description: string;
             final_score: number;
             final_grade: LetterGrade;
             assignment_id: number;
@@ -36,12 +31,15 @@ router.get("/", async (c) => {
 
         const courses = groupBy(results, "id");
         const data = Object.entries(courses).map(([courseId, reports]) => {
-            const { name, final_score, final_grade } = reports[0];
+            const report = reports[0];
             return {
-                id: courseId,
-                name,
-                final_score,
-                final_grade,
+                final_score: report.final_score,
+                final_grade: report.final_grade,
+                course: {
+                    id: courseId,
+                    name: report.name,
+                    description: report.description,
+                },
                 reports: reports.map((report) => ({
                     id: report.assignment_id,
                     title: report.assignment_title,

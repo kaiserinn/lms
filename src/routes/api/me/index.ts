@@ -41,8 +41,7 @@ router.patch("/", async (c) => {
 router.delete("/", async (c) => {
     const token = getCookie(c, "auth_session");
     const user = c.get("user");
-    const setHeader = (await db.delete_account<User>(user.id))
-        .setHeader;
+    const setHeader = (await db.delete_account<User>(user.id)).setHeader;
 
     if (!setHeader.affectedRows) {
         throw new HTTPException(401, {

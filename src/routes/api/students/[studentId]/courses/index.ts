@@ -1,7 +1,7 @@
 import { db } from "@/db";
+import type { Course } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { singleStudentCourseRouter } from "./[courseId]";
-import type { Course } from "@/lib/types";
 
 const router = createValidatedRouter();
 
@@ -17,6 +17,7 @@ router.get("/", async (c) => {
         filter["filter:id"],
         filter["filter:name"],
         filter["filter:description"],
+        filter["filter:status"],
     );
 
     return c.json({

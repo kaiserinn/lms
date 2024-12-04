@@ -16,7 +16,7 @@ router.get("/", async (c) => {
         filter["filter:email"],
         filter["filter:first_name"],
         filter["filter:last_name"],
-        "STUDENT"
+        "STUDENT",
     );
 
     return c.json({

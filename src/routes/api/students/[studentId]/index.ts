@@ -11,7 +11,7 @@ router.route("/courses", studentCoursesRouter);
 router.route("/transcript", transcriptRouter);
 
 router.get("/", async (c) => {
-    const id = c.req.param("id");
+    const id = c.req.param("studentId");
     const student = (await db.get_student<User>(id)).data[0];
 
     if (!student) {

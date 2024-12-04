@@ -1,11 +1,12 @@
-import { Hono } from "hono";
-import { authRouter } from "./auth";
 import { validateSession } from "@/middlewares/validateSession";
-import { coursesRouter } from "./courses";
+import { Hono } from "hono";
 import { accountsRouter } from "./accounts";
+import { authRouter } from "./auth";
+import { coursesRouter } from "./courses";
+import { filesRouter } from "./files";
+import { instructorsRouter } from "./instructors";
 import { meRouter } from "./me";
 import { studentsRouter } from "./students";
-import { instructorsRouter } from "./instructors";
 
 const router = new Hono();
 
@@ -16,5 +17,6 @@ router.route("/students", studentsRouter);
 router.route("/instructors", instructorsRouter);
 router.route("/me", meRouter);
 router.route("/courses", coursesRouter);
+router.route("/files", filesRouter);
 
 export { router as apiRouter };
