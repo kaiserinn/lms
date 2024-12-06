@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { Assignment, LetterGrade, Submission } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isStudent } from "@/middlewares/authorization";
+import { db } from "@/services";
 
 const router = createValidatedRouter();
 

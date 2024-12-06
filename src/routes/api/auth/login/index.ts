@@ -1,5 +1,5 @@
-import { db } from "@/db";
 import type { Session, User } from "@/lib/types";
+import { db } from "@/services";
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 

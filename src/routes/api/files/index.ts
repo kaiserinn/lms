@@ -1,8 +1,8 @@
 import { extname } from "node:path";
-import { db } from "@/db";
 import type { Attachment, Merge, User } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { nanoid } from "@/lib/utils/nanoid";
+import { db } from "@/services";
 import { serveStatic } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 

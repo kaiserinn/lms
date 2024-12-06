@@ -1,6 +1,6 @@
-import { db } from "@/db";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isStudent } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { HTTPException } from "hono/http-exception";
 import { courseReportsRouter } from "./reports";
 

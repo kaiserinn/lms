@@ -1,5 +1,5 @@
-import { db } from "@/db";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { db } from "@/services";
 import { singleInstructorCourseRouter } from "./[courseId]";
 
 const router = createValidatedRouter();

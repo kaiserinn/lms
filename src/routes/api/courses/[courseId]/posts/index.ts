@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { Merge, Post, User } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isInstructor } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { singlePostRouter } from "./[postId]";
 
 const router = createValidatedRouter();

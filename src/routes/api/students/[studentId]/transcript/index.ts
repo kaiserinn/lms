@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { Assignment, Course, LetterGrade } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { groupBy } from "@/lib/utils/groupBy";
+import { db } from "@/services";
 
 const router = createValidatedRouter();
 

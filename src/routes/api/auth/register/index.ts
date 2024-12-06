@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db } from "@/services";
 import { Hono } from "hono";
 
 const router = new Hono();

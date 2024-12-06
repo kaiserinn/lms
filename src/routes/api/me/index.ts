@@ -1,6 +1,6 @@
-import { db } from "@/db";
 import type { Session, User } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
+import { db } from "@/services";
 import { deleteCookie, getCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 

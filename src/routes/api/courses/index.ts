@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { Course } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isAdmin } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { singleCourseRouter } from "./[courseId]";
 
 const router = createValidatedRouter();
@@ -10,7 +10,7 @@ router.route("/:courseId", singleCourseRouter);
 
 router.get("/", async (c) => {
     const filters = c.req.query();
-    const results = await db.get_courses<Course>(
+    const results = await db.get_cOurses<Course>(
         filters["filter:any"],
         filters["filter:id"],
         filters["filter:name"],

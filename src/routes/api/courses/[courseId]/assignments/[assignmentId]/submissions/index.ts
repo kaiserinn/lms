@@ -1,4 +1,3 @@
-import { db } from "@/db";
 import type {
     Assignment,
     Attachment,
@@ -9,6 +8,7 @@ import type {
 } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isStudent } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { singleSubmissionRouter } from "./[submissionId]";
 
 const router = createValidatedRouter();

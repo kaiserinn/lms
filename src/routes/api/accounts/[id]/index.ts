@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { User } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isAdmin } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { HTTPException } from "hono/http-exception";
 
 const router = createValidatedRouter();

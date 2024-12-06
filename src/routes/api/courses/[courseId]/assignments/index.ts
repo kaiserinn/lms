@@ -1,7 +1,7 @@
-import { db } from "@/db";
 import type { Assignment, Attachment, Course, Merge, User } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isInstructor } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { singleAssignmentRouter } from "./[assignmentId]";
 
 const router = createValidatedRouter();

@@ -1,6 +1,5 @@
 import { unlink } from "node:fs/promises";
 import { resolve } from "node:path";
-import { db } from "@/db";
 import type {
     Assignment,
     Attachment,
@@ -11,6 +10,7 @@ import type {
 } from "@/lib/types";
 import { createValidatedRouter } from "@/lib/utils/createValidatedRouter";
 import { isInstructor } from "@/middlewares/authorization";
+import { db } from "@/services";
 import { HTTPException } from "hono/http-exception";
 
 const router = createValidatedRouter();
